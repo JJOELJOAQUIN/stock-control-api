@@ -1,6 +1,5 @@
 package com.jowi.stock.auth;
 
-import com.jowi.stock.auth.SetUserRoleRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,22 +9,19 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/users")
 public class AdminUserController {
 
-    private final UserRoleService roleService;
+    private final UserRoleManagementService roleService;
 
-    public AdminUserController(UserRoleService roleService) {
+    public AdminUserController(UserRoleManagementService roleService) {
         this.roleService = roleService;
     }
 
-    @PostMapping("/role")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> setRole(
-            @Valid @RequestBody SetUserRoleRequest request) {
-
-        roleService.setUserRole(
-            request.uid(),
-            request.role()
-        );
-
+    @PostMapping("/{firebaseUid}/role")
+    public ResponseEntity<Void> updateRole(
+        @PathVariable String firebaseUid,
+        @Valid @RequestBody UpdateUserRoleRequest request
+    ) {
+        roleService.updateUserRole(firebaseUid, request.role());
         return ResponseEntity.noContent().build();
     }
 }
