@@ -16,7 +16,7 @@ public class Stock {
     this.belowMinimum = current < minimum;
   }
 
-  public UUID getProductId() {
+  public UUID getProductId() { 
     return productId;
   }
 

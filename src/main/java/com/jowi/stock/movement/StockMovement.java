@@ -20,12 +20,17 @@ public class StockMovement extends BaseEntity {
   private StockMovementType type;
 
   @NotNull
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 40)
+  private StockMovementReason reasonType;
+
+  @NotNull
   @Min(1)
   @Column(nullable = false)
   private Integer quantity;
 
   @Column(length = 300)
-  private String reason;
+  private String comment;
 
   /* getters */
 
@@ -37,12 +42,16 @@ public class StockMovement extends BaseEntity {
     return type;
   }
 
+  public StockMovementReason getReasonType() {
+    return reasonType;
+  }
+
   public Integer getQuantity() {
     return quantity;
   }
 
-  public String getReason() {
-    return reason;
+  public String getComment() {
+    return comment;
   }
 
   /* setters */
@@ -55,11 +64,15 @@ public class StockMovement extends BaseEntity {
     this.type = type;
   }
 
+  public void setReasonType(StockMovementReason reasonType) {
+    this.reasonType = reasonType;
+  }
+
   public void setQuantity(Integer quantity) {
     this.quantity = quantity;
   }
 
-  public void setReason(String reason) {
-    this.reason = reason;
+  public void setComment(String comment) {
+    this.comment = comment;
   }
 }
