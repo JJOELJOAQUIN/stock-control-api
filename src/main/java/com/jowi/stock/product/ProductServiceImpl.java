@@ -17,23 +17,33 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
-  public Product create(Product product) {
+  public Product create(CreateProductRequest request) {
+
+    if (request == null) {
+      throw new IllegalArgumentException("CreateProductRequest cannot be null");
+    }
+
+    Product product = new Product();
+    product.setName(request.name());
+    product.setDescription(request.description());
+    product.setMinimumStock(request.minimumStock());
+    product.setCategory(request.category());
+    product.setBrand(request.brand());
+    product.setExpirable(
+        request.expirable() != null ? request.expirable() : true);
 
     validateProduct(product);
 
-    Product saved = productRepository.save(product);
-
-    return saved;
+    return productRepository.save(product);
   }
 
   @Override
   public Product getById(UUID id) {
 
-    Product product =
-        productRepository
-            .findById(id)
-            .orElseThrow(() -> new IllegalArgumentException(
-                "Product not found: " + id));
+    Product product = productRepository
+        .findById(id)
+        .orElseThrow(() -> new IllegalArgumentException(
+            "Product not found: " + id));
 
     return product;
   }
@@ -54,6 +64,49 @@ public class ProductServiceImpl implements ProductService {
     product.setActive(false);
 
     productRepository.save(product);
+  }
+
+  @Override
+  public Product update(UUID id, UpdateProductRequest r) {
+
+    Product p = getById(id);
+
+    p.setName(r.name());
+    p.setDescription(r.description());
+    p.setMinimumStock(r.minimumStock());
+    p.setCategory(r.category());
+    p.setBrand(r.brand());
+    p.setExpirable(r.expirable());
+    p.setActive(r.active());
+
+    validateProduct(p);
+
+    return productRepository.save(p);
+  }
+
+  @Override
+  public Product updatePartial(UUID id, PatchProductRequest r) {
+
+    Product p = getById(id);
+
+    if (r.name() != null)
+      p.setName(r.name());
+    if (r.description() != null)
+      p.setDescription(r.description());
+    if (r.minimumStock() != null)
+      p.setMinimumStock(r.minimumStock());
+    if (r.category() != null)
+      p.setCategory(r.category());
+    if (r.brand() != null)
+      p.setBrand(r.brand());
+    if (r.expirable() != null)
+      p.setExpirable(r.expirable());
+    if (r.active() != null)
+      p.setActive(r.active());
+
+    validateProduct(p);
+
+    return productRepository.save(p);
   }
 
   // ========================

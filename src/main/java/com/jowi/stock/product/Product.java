@@ -3,29 +3,41 @@ package com.jowi.stock.product;
 import com.jowi.stock.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 @Entity
 @Table(name = "products")
 public class Product extends BaseEntity {
 
-  @NotBlank
+
   @Column(nullable = false, length = 120)
   private String name;
 
   @Column(length = 500)
   private String description;
 
-  @NotNull
-  @Min(0)
+
   @Column(nullable = false)
   private Integer minimumStock;
 
   @Column(nullable = false)
   private Boolean active = true;
+
+  @NotNull
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 40)
+  private ProductCategory category;
+
+  @NotNull
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 40)
+  private ProductBrand brand;
+
+  @Column(nullable = false)
+  private Boolean expirable = true;
 
   public String getName() {
     return name;
@@ -58,4 +70,29 @@ public class Product extends BaseEntity {
   public void setActive(Boolean active) {
     this.active = active;
   }
+
+  public ProductCategory getCategory() {
+    return category;
+  }
+
+  public void setCategory(ProductCategory category) {
+    this.category = category;
+  }
+
+  public ProductBrand getBrand() {
+    return brand;
+  }
+
+  public void setBrand(ProductBrand brand) {
+    this.brand = brand;
+  }
+
+  public Boolean getExpirable() {
+    return expirable;
+  }
+
+  public void setExpirable(Boolean expirable) {
+    this.expirable = expirable;
+  }
+
 }

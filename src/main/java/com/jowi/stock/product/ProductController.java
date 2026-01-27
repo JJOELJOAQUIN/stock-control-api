@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
@@ -18,12 +20,11 @@ public class ProductController {
   }
 
   @PostMapping
-  public ResponseEntity<Product> create(@RequestBody Product product) {
-
-    Product createdProduct;
-    createdProduct = productService.create(product);
-
-    return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
+  public ResponseEntity<Product> create(
+      @Valid @RequestBody CreateProductRequest request) {
+    return ResponseEntity
+        .status(HttpStatus.CREATED)
+        .body(productService.create(request));
   }
 
   @GetMapping
@@ -51,4 +52,19 @@ public class ProductController {
 
     return ResponseEntity.noContent().build();
   }
+
+  @PutMapping("/{id}")
+  public ResponseEntity<Product> update(
+      @PathVariable UUID id,
+      @Valid @RequestBody UpdateProductRequest request) {
+    return ResponseEntity.ok(productService.update(id, request));
+  }
+
+  @PatchMapping("/{id}")
+  public ResponseEntity<Product> updatePartial(
+      @PathVariable UUID id,
+      @RequestBody PatchProductRequest request) {
+    return ResponseEntity.ok(productService.updatePartial(id, request));
+  }
+
 }

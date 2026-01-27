@@ -1,11 +1,12 @@
 spring:
   datasource:
-    url: jdbc:sqlserver://localhost:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true
-    username: stock_user
-    password: Stock123!
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
     show-sql: true
+  
