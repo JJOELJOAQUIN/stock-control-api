@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import org.springframework.data.jpa.domain.Specification;
 
+import com.jowi.stock.stock.StockContext;
+
 public class StockMovementSpecification {
 
   public static Specification<StockMovement> byProduct(UUID productId) {
@@ -12,6 +14,7 @@ public class StockMovementSpecification {
         cb.equal(root.get("product").get("id"), productId);
   }
 
+  
   public static Specification<StockMovement> byType(StockMovementType type) {
     if (type == null) return null;
     return (root, query, cb) ->
@@ -41,6 +44,16 @@ public class StockMovementSpecification {
     return (root, query, cb) ->
         cb.greaterThanOrEqualTo(root.get("createdAt"), from);
   }
+
+  public static Specification<StockMovement> byContext(StockContext context) {
+  if (context == null) {
+    return null;
+  }
+
+  return (root, query, cb) ->
+      cb.equal(root.get("context"), context);
+}
+
 
   public static Specification<StockMovement> toDate(OffsetDateTime to) {
     if (to == null) return null;

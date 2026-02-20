@@ -13,4 +13,4 @@ spring:
 
 security:
   firebase:
-    enabled: false
+    enabled: true

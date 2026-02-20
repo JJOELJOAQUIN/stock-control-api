@@ -14,16 +14,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
+  private final AppUserService appUserService;
+
+  public FirebaseAuthenticationFilter(AppUserService appUserService) {
+    this.appUserService = appUserService;
+  }
 
   @Override
   protected void doFilterInternal(
       HttpServletRequest request,
       HttpServletResponse response,
-      FilterChain filterChain
-  ) throws ServletException, IOException {
+      FilterChain filterChain) throws ServletException, IOException {
 
     String authHeader = request.getHeader("Authorization");
 
@@ -40,15 +44,16 @@ public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
       String uid = decoded.getUid();
       String email = decoded.getEmail();
 
-      Map<String, Object> claims = decoded.getClaims();
-      String role = (String) claims.getOrDefault("role", "USER");
+      // 🔥 ACÁ ESTÁ LA CLAVE
+      AppUser user = appUserService.findOrCreate(uid, email);
+
+      String role = user.getRole().name();
 
       var authorities = List.of(
-          new SimpleGrantedAuthority("ROLE_" + role)
-      );
+          new SimpleGrantedAuthority("ROLE_" + role));
 
-      UsernamePasswordAuthenticationToken authentication =
-          new UsernamePasswordAuthenticationToken(uid, null, authorities);
+      UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(uid, null,
+          authorities);
 
       SecurityContextHolder.getContext().setAuthentication(authentication);
 

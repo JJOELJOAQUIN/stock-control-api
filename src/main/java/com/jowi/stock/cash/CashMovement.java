@@ -6,7 +6,11 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "cash_movements")
+@Table(name = "cash_movements", indexes = {
+    @Index(name = "idx_cash_context", columnList = "context"),
+    @Index(name = "idx_cash_created_at", columnList = "createdAt")
+})
+
 public class CashMovement extends BaseEntity {
 
   @NotNull

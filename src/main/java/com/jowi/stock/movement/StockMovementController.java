@@ -7,6 +7,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.jowi.stock.stock.StockContext;
+
 @RestController
 @RequestMapping("/api/stock-movements")
 public class StockMovementController {
@@ -26,10 +28,21 @@ public class StockMovementController {
       @RequestParam(required = false) Integer maxQty,
       @RequestParam(required = false) OffsetDateTime from,
       @RequestParam(required = false) OffsetDateTime to,
+      @RequestParam StockContext context,
       Pageable pageable) {
     return ResponseEntity.ok(
-        service
-            .search(productId, type, reason, minQty, maxQty, from, to, pageable)
+
+        service.search(
+            productId,
+            context,
+            type,
+            reason,
+            minQty,
+            maxQty,
+            from,
+            to,
+            pageable)
+
             .map(StockMovementResponse::from));
   }
 }

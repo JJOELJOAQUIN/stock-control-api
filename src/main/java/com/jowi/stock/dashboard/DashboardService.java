@@ -2,6 +2,8 @@ package com.jowi.stock.dashboard;
 
 import com.jowi.stock.product.ProductRepository;
 import com.jowi.stock.stock.JpaStockRepository;
+import com.jowi.stock.stock.StockContext;
+import com.jowi.stock.stock.StockEntity;
 import com.jowi.stock.cash.CashContext;
 import com.jowi.stock.cash.CashMovementRepository;
 import com.jowi.stock.movement.StockMovementRepository;
@@ -10,7 +12,7 @@ import com.jowi.stock.movement.StockMovementType;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
-import java.time.Instant; // 👈 IMPORT NUEVO
+import java.time.Instant; 
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -26,7 +28,6 @@ public class DashboardService {
     private final CashKpiService cashKpiService;
     private final CashKpiPaymentMethodService cashPaymentKpiService;
     private final CashMovementRepository cashMovementRepository;
-    private final MovementKpiService movementKpiService;
 
     public DashboardService(
             ProductRepository productRepository,
@@ -34,15 +35,14 @@ public class DashboardService {
             StockMovementRepository movementRepository,
             CashKpiService cashKpiService,
             CashKpiPaymentMethodService cashPaymentKpiService,
-            CashMovementRepository cashMovementRepository,
-            MovementKpiService movementKpiService) {
+            CashMovementRepository cashMovementRepository) {
         this.productRepository = productRepository;
         this.stockRepository = stockRepository;
         this.movementRepository = movementRepository;
         this.cashKpiService = cashKpiService;
         this.cashPaymentKpiService = cashPaymentKpiService;
         this.cashMovementRepository = cashMovementRepository;
-        this.movementKpiService = movementKpiService;
+
     }
 
     public CashKpiSummaryResponse getCashKpis() {
@@ -73,24 +73,28 @@ public class DashboardService {
     // =========================
     // 🔧 FIX ACA
     // =========================
-    public DashboardSummaryResponse getSummary() {
+    public DashboardSummaryResponse getSummary(StockContext context) {
 
         long totalProducts = productRepository.count();
-        long productsWithStock = stockRepository.countByCurrentGreaterThan(0);
-        long productsWithoutStock = totalProducts - productsWithStock;
-        long lowStock = stockRepository.countBelowMinimum();
-        long totalMovements = movementRepository.count();
 
-        // ⬇️ INICIO DEL DIA COMO Instant
+        List<StockEntity> stocks = stockRepository.findByContext(context);
+
+        long productsWithStock = stocks.stream()
+                .filter(s -> s.getCurrent() > 0)
+                .count();
+
+        long productsWithoutStock = totalProducts - productsWithStock;
+        long lowStock = stocks.stream()
+                .filter(stock -> stock.getCurrent() < stock.getProduct().getMinimumStock())
+                .count();
+
+        long totalMovements = movementRepository.countByContext(context);
+
         Instant startOfDay = OffsetDateTime.now()
-                .withHour(0)
-                .withMinute(0)
-                .withSecond(0)
-                .withNano(0)
+                .withHour(0).withMinute(0).withSecond(0).withNano(0)
                 .toInstant();
 
-        long movementsToday =
-                movementRepository.countByCreatedAtAfter(startOfDay);
+        long movementsToday = movementRepository.countByContextAndCreatedAtAfter(context, startOfDay);
 
         return new DashboardSummaryResponse(
                 totalProducts,

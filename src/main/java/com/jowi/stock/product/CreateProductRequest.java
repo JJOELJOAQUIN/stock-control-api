@@ -10,5 +10,8 @@ public record CreateProductRequest(
     @NotNull @Min(0) Integer minimumStock,
     @NotNull ProductCategory category,
     @NotNull ProductBrand brand,
-    Boolean expirable
+    Boolean expirable,
+    @NotNull ProductScope scope,
+    String barcode
+     
 ) {}

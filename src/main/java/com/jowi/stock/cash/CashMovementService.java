@@ -28,6 +28,12 @@ public class CashMovementService {
             throw new IllegalArgumentException("amount must be > 0");
         }
 
+        if (req.type() == null)
+            throw new IllegalArgumentException("type is required");
+
+        if (req.source() == null)
+            throw new IllegalArgumentException("source is required");
+
         BigDecimal percent = resolveRetentionPercent(req.paymentMethod(), req.retentionPercent());
 
         BigDecimal retention = amount.multiply(percent).setScale(2, RoundingMode.HALF_UP);
