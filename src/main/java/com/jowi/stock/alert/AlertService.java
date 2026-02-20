@@ -3,6 +3,7 @@ package com.jowi.stock.alert;
 import com.jowi.stock.product.Product;
 import com.jowi.stock.product.ProductRepository;
 import com.jowi.stock.stock.JpaStockRepository;
+import com.jowi.stock.stock.StockContext;
 import com.jowi.stock.stock.StockEntity;
 
 import java.time.OffsetDateTime;
@@ -29,21 +30,30 @@ public class AlertService {
   // =========================
   // ALERTAS STOCK BAJO
   // =========================
-  public List<AlertResponse> lowStock() {
-    return stockRepository.findBelowMinimum()
+  public List<AlertResponse> lowStock(StockContext context) {
+
+    return stockRepository.findByContext(context)
         .stream()
+        .filter(stock -> {
+          Product product = productRepository
+              .findById( stock.getProduct().getMinimumStock())
+              .orElseThrow();
+          return stock.getCurrent() < product.getMinimumStock();
+        })
         .map(this::toLowStockAlert)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   // =========================
   // ALERTAS SIN STOCK
   // =========================
-  public List<AlertResponse> outOfStock() {
-    return stockRepository.findByCurrent(0)
+  public List<AlertResponse> outOfStock(StockContext context) {
+
+    return stockRepository.findByContext(context)
         .stream()
+        .filter(stock -> stock.getCurrent() == 0)
         .map(this::toOutOfStockAlert)
-        .collect(Collectors.toList());
+        .toList();
   }
 
   // =========================
@@ -58,9 +68,9 @@ public class AlertService {
         AlertType.LOW_STOCK,
         product.getId(),
         product.getName(),
-        "Stock por debajo del mínimo (" + stock.getCurrent() + "/" + stock.getMinimum() + ")",
-        OffsetDateTime.now()
-    );
+        "Stock por debajo del mínimo (" +
+            stock.getCurrent() + "/" + product.getMinimumStock() + ")",
+        OffsetDateTime.now());
   }
 
   private AlertResponse toOutOfStockAlert(StockEntity stock) {
@@ -73,7 +83,6 @@ public class AlertService {
         product.getId(),
         product.getName(),
         "Producto sin stock",
-        OffsetDateTime.now()
-    );
+        OffsetDateTime.now());
   }
 }

@@ -2,12 +2,18 @@ package com.jowi.stock.movement;
 
 import com.jowi.stock.common.BaseEntity;
 import com.jowi.stock.product.Product;
+import com.jowi.stock.stock.StockContext;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 @Entity
-@Table(name = "stock_movements")
+@Table(name = "stock_movements", indexes = {
+    @Index(name = "idx_stock_movements_product_context", columnList = "product_id, context"),
+    @Index(name = "idx_stock_movements_type", columnList = "type")
+})
+
 public class StockMovement extends BaseEntity {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -32,7 +38,16 @@ public class StockMovement extends BaseEntity {
   @Column(length = 300)
   private String comment;
 
+  @NotNull
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private StockContext context;
+
   /* getters */
+
+  public StockContext getContext() {
+    return context;
+  }
 
   public Product getProduct() {
     return product;
@@ -74,5 +89,9 @@ public class StockMovement extends BaseEntity {
 
   public void setComment(String comment) {
     this.comment = comment;
+  }
+
+  public void setContext(StockContext context) {
+    this.context = context;
   }
 }

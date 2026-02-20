@@ -8,27 +8,34 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
+import com.jowi.stock.stock.StockContext;
+
 public interface StockMovementRepository
-    extends JpaRepository<StockMovement, UUID>,
-            JpaSpecificationExecutor<StockMovement> {
+        extends JpaRepository<StockMovement, UUID>,
+        JpaSpecificationExecutor<StockMovement> {
 
-  // ===== Listado por producto =====
-  Page<StockMovement> findByProductId(UUID productId, Pageable pageable);
+    // ===== Listado por producto =====
+    Page<StockMovement> findByProduct_Id(UUID productId, Pageable pageable);
 
-  // ===== KPIs =====
-  long countByType(StockMovementType type);
+    // ===== KPIs =====
+    long countByType(StockMovementType type);
 
-long countByCreatedAtAfter(Instant from);
+    long countByCreatedAtAfter(Instant from);
 
-long countByTypeAndCreatedAtAfter(
-    StockMovementType type,
-    Instant from
-);
+    long countByContext(StockContext context);
 
-  @Query("""
-    SELECT COALESCE(SUM(m.quantity), 0)
-    FROM StockMovement m
-    WHERE m.type = :type
-  """)
-  long sumQuantityByType(StockMovementType type);
+    long countByContextAndCreatedAtAfter(
+            StockContext context,
+            Instant date);
+
+    long countByTypeAndCreatedAtAfter(
+            StockMovementType type,
+            Instant from);
+
+    @Query("""
+              SELECT COALESCE(SUM(m.quantity), 0)
+              FROM StockMovement m
+              WHERE m.type = :type
+            """)
+    long sumQuantityByType(StockMovementType type);
 }

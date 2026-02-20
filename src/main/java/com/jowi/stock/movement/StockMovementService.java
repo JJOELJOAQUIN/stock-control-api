@@ -2,6 +2,8 @@ package com.jowi.stock.movement;
 
 import com.jowi.stock.product.Product;
 import com.jowi.stock.product.ProductRepository;
+import com.jowi.stock.stock.StockContext;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
@@ -27,23 +29,23 @@ public class StockMovementService {
     this.productRepository = productRepository;
   }
 
-  // ==================================================
-  // REGISTRAR MOVIMIENTO (USADO POR StockService)
-  // ==================================================
   public StockMovement register(
       UUID productId,
+      StockContext context,
       StockMovementType type,
       int quantity,
       StockMovementReason reasonType,
       String comment) {
 
-    validate(type, quantity, reasonType);
+    validate(context, type, quantity, reasonType);
 
     Product product = productRepository.findById(productId)
-        .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
+        .orElseThrow(() ->
+            new EntityNotFoundException("Product not found: " + productId));
 
     StockMovement movement = new StockMovement();
     movement.setProduct(product);
+    movement.setContext(context);
     movement.setType(type);
     movement.setQuantity(quantity);
     movement.setReasonType(reasonType);
@@ -52,11 +54,9 @@ public class StockMovementService {
     return repository.save(movement);
   }
 
-  // ==================================================
-  // BÚSQUEDA CON FILTROS + PAGINADO (DASHBOARD)
-  // ==================================================
   public Page<StockMovement> search(
       UUID productId,
+      StockContext context,
       StockMovementType type,
       StockMovementReason reason,
       Integer minQty,
@@ -69,25 +69,28 @@ public class StockMovementService {
       throw new IllegalArgumentException("productId is required");
     }
 
-    Specification<StockMovement> spec = Specification.where(StockMovementSpecification.byProduct(productId))
-        .and(StockMovementSpecification.byType(type))
-        .and(StockMovementSpecification.byReason(reason))
-        .and(StockMovementSpecification.quantityGte(minQty))
-        .and(StockMovementSpecification.quantityLte(maxQty))
-        .and(StockMovementSpecification.fromDate(from))
-        .and(StockMovementSpecification.toDate(to));
+    Specification<StockMovement> spec =
+        Specification.where(StockMovementSpecification.byProduct(productId))
+            .and(StockMovementSpecification.byContext(context))
+            .and(StockMovementSpecification.byType(type))
+            .and(StockMovementSpecification.byReason(reason))
+            .and(StockMovementSpecification.quantityGte(minQty))
+            .and(StockMovementSpecification.quantityLte(maxQty))
+            .and(StockMovementSpecification.fromDate(from))
+            .and(StockMovementSpecification.toDate(to));
 
     return repository.findAll(spec, pageable);
   }
 
-  // ==================================================
-  // VALIDACIONES
-  // ==================================================
   private void validate(
+      StockContext context,
       StockMovementType type,
       int quantity,
       StockMovementReason reasonType) {
 
+    if (context == null) {
+      throw new IllegalArgumentException("Context is required");
+    }
     if (type == null) {
       throw new IllegalArgumentException("Movement type is required");
     }

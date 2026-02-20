@@ -6,12 +6,12 @@ import java.util.UUID;
 
 public interface StockRepository {
 
-  Optional<Stock> findByProductId(UUID productId);
+  Optional<Stock> findByProductIdAndContext(UUID productId, StockContext context);
 
-  void save(Stock stock);
+  void save(UUID productId, StockContext context, int current);
 
-  boolean existsByProductId(UUID productId);
+  boolean existsByProductIdAndContext(UUID productId, StockContext context);
 
- 
-   List<Stock> findAll();
+  List<Stock> findAllByContext(StockContext context);
 }
+

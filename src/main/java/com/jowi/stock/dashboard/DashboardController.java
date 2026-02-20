@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.jowi.stock.cash.CashContext;
+import com.jowi.stock.stock.StockContext;
 
 @RestController
 @RequestMapping("/api/dashboard")
@@ -21,8 +22,9 @@ public class DashboardController {
   // RESUMEN GENERAL
   // =========================
   @GetMapping("/summary")
-  public ResponseEntity<DashboardSummaryResponse> summary() {
-    return ResponseEntity.ok(dashboardService.getSummary());
+  public ResponseEntity<DashboardSummaryResponse> summary(
+      @RequestParam StockContext context) {
+    return ResponseEntity.ok(dashboardService.getSummary(context));
   }
 
   // =========================

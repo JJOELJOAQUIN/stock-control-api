@@ -27,8 +27,7 @@ public class BusinessOperationController {
         req.amount(),
         req.paymentMethod(),
         req.context(),
-        req.comment()
-    );
+        req.comment());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
@@ -43,9 +42,25 @@ public class BusinessOperationController {
         req.productId(),
         req.quantity(),
         req.amount(),
-        req.comment()
-    );
+        req.context(),
+        req.comment());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
+
+  @PostMapping("/sell-by-barcode")
+  public ResponseEntity<Void> sellByBarcode(
+      @Valid @RequestBody SellByBarcodeRequest req) {
+
+    service.sellByBarcode(
+        req.barcode(),
+        req.quantity(),
+        req.amount(),
+        req.paymentMethod(),
+        req.context(),
+        req.comment());
+
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
 }

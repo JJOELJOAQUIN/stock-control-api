@@ -20,10 +20,10 @@ public class UserRoleManagementService {
 
     public void updateUserRole(String firebaseUid, Role role) {
 
-        // 1️⃣ Persistir en BD
+        // 1️⃣ Persistir en BD (fuente de verdad)
         appUserService.updateRole(firebaseUid, role);
 
-        // 2️⃣ Sincronizar con Firebase
+        // 2️⃣ Sincronizar Firebase Custom Claim
         firebaseRoleService.setRole(firebaseUid, role);
     }
 }

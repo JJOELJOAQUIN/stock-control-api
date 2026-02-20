@@ -17,4 +17,10 @@ public interface ProductService {
 
   Product updatePartial(UUID id, PatchProductRequest request);
 
+  Product getByBarcode(String barcode);
+
+  void bulkCreate(List<CreateProductRequest> requests);
+  void assignBarcode(UUID productId, String barcode);
+
+
 }

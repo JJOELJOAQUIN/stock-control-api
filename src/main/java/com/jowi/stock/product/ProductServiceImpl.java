@@ -109,6 +109,16 @@ public class ProductServiceImpl implements ProductService {
     return productRepository.save(p);
   }
 
+  public Product getByBarcode(String barcode) {
+
+    if (barcode == null || barcode.isBlank()) {
+      throw new IllegalArgumentException("Barcode is required");
+    }
+
+    return productRepository.findByBarcode(barcode)
+        .orElseThrow(() -> new IllegalArgumentException("Product not found for barcode: " + barcode));
+  }
+
   // ========================
   // VALIDACIONES DE DOMINIO
   // ========================
@@ -130,4 +140,54 @@ public class ProductServiceImpl implements ProductService {
       throw new IllegalArgumentException("Minimum stock cannot be negative");
     }
   }
+
+  @Override
+  @Transactional
+  public void bulkCreate(List<CreateProductRequest> requests) {
+
+    if (requests == null || requests.isEmpty()) {
+      throw new IllegalArgumentException("Product list cannot be empty");
+    }
+
+    for (CreateProductRequest req : requests) {
+
+      Product product = new Product();
+      product.setName(req.name());
+      product.setDescription(req.description());
+      product.setMinimumStock(req.minimumStock());
+      product.setCategory(req.category());
+      product.setBrand(req.brand());
+      product.setScope(req.scope());
+      product.setExpirable(req.expirable() != null ? req.expirable() : true);
+      product.setBarcode(req.barcode());
+
+      validateProduct(product);
+
+      productRepository.save(product);
+    }
+  }
+
+  @Override
+@Transactional
+public void assignBarcode(UUID productId, String barcode) {
+
+  if (barcode == null || barcode.isBlank()) {
+    throw new IllegalArgumentException("Barcode is required");
+  }
+
+  Product product = getById(productId);
+
+  // Verificar que no exista otro producto con ese barcode
+  productRepository.findByBarcode(barcode)
+      .ifPresent(existing -> {
+        if (!existing.getId().equals(productId)) {
+          throw new IllegalStateException("Barcode already assigned to another product");
+        }
+      });
+
+  product.setBarcode(barcode);
+  productRepository.save(product);
+}
+
+
 }
