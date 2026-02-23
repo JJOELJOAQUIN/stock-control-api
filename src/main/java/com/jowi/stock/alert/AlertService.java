@@ -75,7 +75,7 @@ public class AlertService {
 
   private AlertResponse toOutOfStockAlert(StockEntity stock) {
     Product product = productRepository
-        .findById(stock.getProductId())
+        .findById(stock.getProduct())
         .orElseThrow();
 
     return new AlertResponse(
