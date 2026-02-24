@@ -32,6 +32,9 @@ public class ProductServiceImpl implements ProductService {
     product.setExpirable(
         request.expirable() != null ? request.expirable() : true);
 
+    product.setScope(request.scope());
+    product.setBarcode(request.barcode());
+
     validateProduct(product);
 
     return productRepository.save(product);
@@ -168,26 +171,25 @@ public class ProductServiceImpl implements ProductService {
   }
 
   @Override
-@Transactional
-public void assignBarcode(UUID productId, String barcode) {
+  @Transactional
+  public void assignBarcode(UUID productId, String barcode) {
 
-  if (barcode == null || barcode.isBlank()) {
-    throw new IllegalArgumentException("Barcode is required");
+    if (barcode == null || barcode.isBlank()) {
+      throw new IllegalArgumentException("Barcode is required");
+    }
+
+    Product product = getById(productId);
+
+    // Verificar que no exista otro producto con ese barcode
+    productRepository.findByBarcode(barcode)
+        .ifPresent(existing -> {
+          if (!existing.getId().equals(productId)) {
+            throw new IllegalStateException("Barcode already assigned to another product");
+          }
+        });
+
+    product.setBarcode(barcode);
+    productRepository.save(product);
   }
-
-  Product product = getById(productId);
-
-  // Verificar que no exista otro producto con ese barcode
-  productRepository.findByBarcode(barcode)
-      .ifPresent(existing -> {
-        if (!existing.getId().equals(productId)) {
-          throw new IllegalStateException("Barcode already assigned to another product");
-        }
-      });
-
-  product.setBarcode(barcode);
-  productRepository.save(product);
-}
-
 
 }
