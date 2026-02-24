@@ -1,14 +1,12 @@
 package com.jowi.stock.alert;
 
 import com.jowi.stock.product.Product;
-import com.jowi.stock.product.ProductRepository;
 import com.jowi.stock.stock.JpaStockRepository;
 import com.jowi.stock.stock.StockContext;
 import com.jowi.stock.stock.StockEntity;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,28 +16,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class AlertService {
 
   private final JpaStockRepository stockRepository;
-  private final ProductRepository productRepository;
 
-  public AlertService(
-      JpaStockRepository stockRepository,
-      ProductRepository productRepository) {
+  public AlertService(JpaStockRepository stockRepository) {
     this.stockRepository = stockRepository;
-    this.productRepository = productRepository;
+
   }
 
   // =========================
   // ALERTAS STOCK BAJO
   // =========================
   public List<AlertResponse> lowStock(StockContext context) {
-
     return stockRepository.findByContext(context)
         .stream()
-        .filter(stock -> {
-          Product product = productRepository
-              .findById( stock.getProduct().getMinimumStock())
-              .orElseThrow();
-          return stock.getCurrent() < product.getMinimumStock();
-        })
+        .filter(stock -> stock.getCurrent() < stock.getProduct().getMinimumStock())
         .map(this::toLowStockAlert)
         .toList();
   }
@@ -48,7 +37,6 @@ public class AlertService {
   // ALERTAS SIN STOCK
   // =========================
   public List<AlertResponse> outOfStock(StockContext context) {
-
     return stockRepository.findByContext(context)
         .stream()
         .filter(stock -> stock.getCurrent() == 0)
@@ -60,23 +48,18 @@ public class AlertService {
   // HELPERS
   // =========================
   private AlertResponse toLowStockAlert(StockEntity stock) {
-    Product product = productRepository
-        .findById(stock.getProductId())
-        .orElseThrow();
+    Product product = stock.getProduct();
 
     return new AlertResponse(
         AlertType.LOW_STOCK,
         product.getId(),
         product.getName(),
-        "Stock por debajo del mínimo (" +
-            stock.getCurrent() + "/" + product.getMinimumStock() + ")",
+        "Stock por debajo del mínimo (" + stock.getCurrent() + "/" + product.getMinimumStock() + ")",
         OffsetDateTime.now());
   }
 
   private AlertResponse toOutOfStockAlert(StockEntity stock) {
-    Product product = productRepository
-        .findById(stock.getProduct())
-        .orElseThrow();
+    Product product = stock.getProduct();
 
     return new AlertResponse(
         AlertType.OUT_OF_STOCK,

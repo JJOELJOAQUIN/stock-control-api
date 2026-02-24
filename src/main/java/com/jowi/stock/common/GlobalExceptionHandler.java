@@ -5,9 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -16,26 +19,24 @@ public class GlobalExceptionHandler {
   // 400 - BAD REQUEST
   // =========================
 
-@ExceptionHandler(HttpMessageNotReadableException.class)
-public ResponseEntity<ErrorResponse> handleInvalidJson(
-    HttpMessageNotReadableException ex,
-    HttpServletRequest request) {
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ErrorResponse> handleInvalidJson(
+      HttpMessageNotReadableException ex,
+      HttpServletRequest request) {
 
-  Throwable root = ex.getMostSpecificCause();
-  String detail = (root != null && root.getMessage() != null)
-      ? root.getMessage()
-      : ex.getMessage();
+    Throwable root = ex.getMostSpecificCause();
+    String detail = (root != null && root.getMessage() != null)
+        ? root.getMessage()
+        : ex.getMessage();
 
-  // si querés, dejalo para consola igual
-  ex.printStackTrace();
+    // si querés, dejalo para consola igual
+    ex.printStackTrace();
 
-  return buildError(
-      HttpStatus.BAD_REQUEST,
-      "Invalid request body: " + detail,
-      request.getRequestURI()
-  );
-}
-
+    return buildError(
+        HttpStatus.BAD_REQUEST,
+        "Invalid request body: " + detail,
+        request.getRequestURI());
+  }
 
   // =========================
   // 404 - NOT FOUND
@@ -120,4 +121,32 @@ public ResponseEntity<ErrorResponse> handleInvalidJson(
         request.getRequestURI());
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ErrorResponse> handleBadRequest(
+      IllegalArgumentException ex,
+      HttpServletRequest request) {
+
+    return buildError(
+        HttpStatus.BAD_REQUEST,
+        ex.getMessage(),
+        request.getRequestURI());
+  }
+
+  // =========================
+  // 400 - PARAMETER ERRORS
+  // =========================
+
+  @ExceptionHandler({
+      MethodArgumentTypeMismatchException.class,
+      MissingServletRequestParameterException.class
+  })
+  public ResponseEntity<ErrorResponse> handleBadRequestParams(
+      Exception ex,
+      HttpServletRequest request) {
+
+    return buildError(
+        HttpStatus.BAD_REQUEST,
+        ex.getMessage(),
+        request.getRequestURI());
+  }
 }
