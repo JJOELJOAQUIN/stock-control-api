@@ -1,231 +1,337 @@
-Stock Control API
+# Stock Control API
 
-Backend profesional para gestión de inventario y caja con arquitectura limpia y seguridad basada en Firebase.
+![Java](https://img.shields.io/badge/Java-17-red)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.x-brightgreen)
+![JPA](https://img.shields.io/badge/JPA-Hibernate-blue)
+![SQL Server](https://img.shields.io/badge/Database-SQL%20Server-lightgrey)
+![Docker](https://img.shields.io/badge/Docker-Ready-blue)
+![Security](https://img.shields.io/badge/Security-Firebase-orange)
+![Build](https://img.shields.io/github/actions/workflow/status/USERNAME/REPO/ci.yml?label=build)
+![Coverage](https://img.shields.io/badge/Coverage-JaCoCo-yellowgreen)
+![Quality](https://img.shields.io/badge/Code%20Quality-SonarQube-informational)
 
----
-
-
-1. Introducción
-
-Stock Control API es una aplicación backend diseñada para la gestión integral de inventario y operaciones financieras en entornos multi-contexto.
-
-El sistema integra control de stock, registro auditable de movimientos, gestión de caja y autenticación segura basada en Firebase.
-
----
-
-2. Objetivos del Sistema
-
-Garantizar consistencia transaccional en operaciones comerciales.
-
-Permitir inventario independiente por contexto.
-
-Registrar auditoría completa de movimientos.
-
-Integrar flujo financiero con control de retenciones.
-
-Implementar seguridad stateless y control de roles.
-
+Backend profesional para gestión de inventario y caja con arquitectura limpia, seguridad basada en Firebase y preparado para producción.
 
 ---
 
-3. Arquitectura
-3.1 Arquitectura en Capas
+## 🚀 Qué resuelve
+
+- Inventario multi-contexto (`LOCAL` / `CONSULTORIO`)
+- Movimientos de stock auditables
+- Gestión de caja con retenciones automáticas
+- Registro estructurado de gastos
+- Operaciones comerciales transaccionales
+- Autenticación JWT (Firebase) con roles persistidos
+
+---
+
+## 🏗 Arquitectura
+
+Arquitectura en capas:
 
 Controllers → Services → Repositories → Database
 
-Controllers
+Principios aplicados:
 
-Exponen endpoints REST.
-
-Services
-
-Contienen lógica de negocio y validaciones de dominio.
-
-Repositories
-
-Adaptadores JPA desacoplados del dominio.
-
-3.2 Bounded Contexts
-Inventory Context
-
-Product
-
-StockEntity
-
-StockMovement
-
-Finance Context
-
-CashMovement
-
-Expense
-
-Authentication Context
-
-AppUser
-
-Role
+- Separación dominio / infraestructura
+- Concurrencia optimista (`@Version`)
+- Anti-corruption layer
+- Stateless security
+- Transacciones consistentes
+- Bounded Contexts (Inventory / Finance / Auth)
 
 ---
 
-4. Modelo de Dominio
-4.1 Product
+## 🧰 Stack Tecnológico
 
-Entidad raíz del agregado Inventory.
+- Java 17  
+- Spring Boot 3.4  
+- Spring Data JPA  
+- SQL Server  
+- H2 (testing)  
+- Firebase Authentication  
+- Docker  
+- JaCoCo (coverage)  
+- GitHub Actions (CI/CD)  
 
-Responsabilidades:
+---
 
-Definir alcance del producto.
+## 🔐 Seguridad
 
-Mantener stock mínimo.
+- Firebase ID Token
+- Roles persistidos (`ADMIN`, `USER`, `COSMETOLOGA`)
+- Stateless
+- Configurable por profile
 
-Soportar código de barras único.
+Header requerido:
 
-Permitir precio de costo opcional.
+```bash
+Authorization: Bearer <firebase_token>
+```
 
-4.2 StockEntity
+---
 
-Representa estado actual del inventario por producto y contexto.
+## ▶️ Ejecutar Localmente
+
+### Requisitos
+
+- Java 17
+- Maven 3.9+
+- SQL Server activo
+
+### Variables de entorno
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:sqlserver://localhost:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true
+SPRING_DATASOURCE_USERNAME=stock_user
+SPRING_DATASOURCE_PASSWORD=TU_PASSWORD
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+SECURITY_FIREBASE_ENABLED=true
+```
+
+### Comando para correr el proyecto
+
+```bash
+mvn clean spring-boot:run
+```
+
+Swagger disponible en:
+
+```
+http://localhost:8080/swagger-ui/index.html
+```
+
+---
+
+## 🧪 Testing & Coverage
+
+Perfil `test` utiliza H2 en memoria.
+
+Ejecutar tests:
+
+```bash
+mvn test
+```
+
+Generar reporte de cobertura JaCoCo:
+
+```bash
+mvn clean verify
+```
+
+Reporte generado en:
+
+```
+target/site/jacoco/index.html
+```
+
+---
+
+## ⚙️ CI/CD – GitHub Actions
+
+El proyecto está preparado para integración continua mediante GitHub Actions.
+
+Ejemplo de workflow (`.github/workflows/ci.yml`):
+
+```yaml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Build
+        run: mvn clean verify
+```
+
+---
+
+## 📦 Modelo de Dominio
+
+### Product
+Entidad raíz del inventario.  
+Define alcance (`LOCAL`, `CONSULTORIO`, `BOTH`) y stock mínimo.
+
+### StockEntity
+Stock actual por producto y contexto.  
 
 Restricción crítica:
 
+```sql
 UNIQUE(product_id, context)
+```
 
 Incluye control de concurrencia optimista.
 
-4.3 StockMovement
+### StockMovement
+Historial auditable de movimientos (`INIT`, `IN`, `OUT`, `ADJUST`).
 
-Historial auditable de movimientos.
+### CashMovement
+Registro financiero asociado a operaciones.  
+Calcula automáticamente retención y monto neto.
 
-Tipos soportados:
+### Expense
+Registro independiente de gastos operativos.
 
-INIT
-
-IN
-
-OUT
-
-ADJUST
-
-4.4 CashMovement
-
-Modelo financiero vinculado a operaciones comerciales.
-
-Funcionalidades:
-
-Cálculo automático de retención.
-
-Cálculo de monto neto.
-
-Asociación opcional a producto.
-
-4.5 Expense
-
-Entidad independiente para gastos operativos.
-
-Soporta gastos recurrentes.
+### AppUser
+Usuario autenticado vía Firebase con rol persistido en base.
 
 ---
 
+## 🐳 Docker
 
-5. Seguridad
-5.1 Modelo
+Estructura recomendada:
 
-Autenticación con Firebase ID Token
+```
+/docker
+  /mssql-init
+    01-init.sql
+docker-compose.yml
+Dockerfile
+.env
+```
 
-Validación mediante filtro personalizado
+Levantar entorno completo:
 
-Persistencia local de rol
+```bash
+docker compose up --build
+```
 
-Stateless
+API disponible en:
 
-5.2 Control de Acceso
-
-Basado en roles:
-
-ADMIN
-
-USER
-
-COSMETOLOGA
-
----
-
-
-6. Consistencia Transaccional
-
-Las operaciones comerciales ejecutan:
-
-Validación de producto
-
-Validación de contexto
-
-Modificación de stock
-
-Registro de movimiento
-
-Registro de movimiento financiero
-
-Todo dentro de una única transacción.
+```
+http://localhost:8080
+```
 
 ---
 
-7. Concurrencia
+## 📊 Métricas y Calidad
 
-Se utiliza @Version en StockEntity para prevenir:
+El proyecto soporta integración con:
 
-Escrituras concurrentes inconsistentes
+- JaCoCo (cobertura de tests)
+- SonarQube / SonarCloud (análisis estático)
+- GitHub Actions (pipeline CI)
 
-Condiciones de carrera
+Métricas recomendadas:
 
----
-
-8. Testing Strategy
-
-Perfil test con H2 en memoria.
-
-create-drop para aislamiento completo.
-
-Seguridad desactivada en tests.
+- Cobertura mínima: 70%+
+- Sin vulnerabilidades críticas
+- Sin code smells bloqueantes
+- Sin duplicación > 5%
 
 ---
 
-9. Deploy Strategy
+## 📡 Endpoints Principales
 
-Entorno recomendado:
+### Productos
 
+| Método | Endpoint |
+|--------|----------|
+| POST   | /api/products |
+| GET    | /api/products |
+| GET    | /api/products/{id} |
+| PATCH  | /api/products/{id} |
+| DELETE | /api/products/{id} |
+| GET    | /api/products/scan/{barcode} |
+
+---
+
+### Stock
+
+| Método | Endpoint |
+|--------|----------|
+| POST | /api/stock/{productId}/init |
+| GET  | /api/stock/{productId} |
+| POST | /api/stock/{productId}/in |
+| POST | /api/stock/{productId}/out |
+| GET  | /api/stock/below-minimum |
+
+---
+
+### Operaciones Comerciales
+
+| Método | Endpoint |
+|--------|----------|
+| POST | /api/business/sell |
+| POST | /api/business/purchase |
+| POST | /api/business/sell-by-barcode |
+
+---
+
+### Caja
+
+| Método | Endpoint |
+|--------|----------|
+| POST | /api/cash-movements |
+| GET  | /api/cash-movements |
+
+---
+
+### Gastos
+
+| Método | Endpoint |
+|--------|----------|
+| POST | /api/expenses |
+| GET  | /api/expenses |
+
+---
+
+## 🔄 Flujo de Venta
+
+1. Buscar producto  
+2. Validar alcance (`scope`)  
+3. Verificar stock disponible  
+4. Registrar movimiento OUT  
+5. Registrar movimiento de caja IN  
+6. Aplicar retención si corresponde  
+
+Todo se ejecuta dentro de una única transacción.
+
+---
+
+## 🏢 Deploy Recomendado
+
+Arquitectura sugerida:
+
+```
 VPS
-└── Docker
-├── stock_api
-├── sql_server
-└── Nginx (reverse proxy + SSL)
+ ├── Docker
+ │    ├── stock_api
+ │    └── sql_server
+ └── Nginx (reverse proxy + SSL)
+```
 
-Configuración productiva:
+Variables productivas:
 
+```bash
 SECURITY_FIREBASE_ENABLED=true
-
 SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+```
 
 ---
 
-10. Conclusión Técnica
+## 📈 Estado del Proyecto
 
-El sistema implementa:
+✔ Arquitectura limpia  
+✔ Inventario multi-contexto  
+✔ Caja integrada  
+✔ Movimientos auditables  
+✔ Seguridad basada en roles  
+✔ Dockerizable  
+✔ CI/CD Ready  
+✔ Cobertura con JaCoCo  
 
-Modelado de dominio coherente
-
-Arquitectura desacoplada
-
-Persistencia robusta
-
-Seguridad profesional
-
-Escalabilidad horizontal vía Docker
-
-Se encuentra preparado para:
-
-Producción
-
-Escalabilidad
-
-Integración futura con frontend o microservicios
+---
