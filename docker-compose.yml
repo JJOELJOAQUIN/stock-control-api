@@ -1,43 +1,36 @@
 services:
-
-  sqlserver:
+  db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: stock_sqlserver
     environment:
       ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Stock123!"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
       MSSQL_PID: "Developer"
     ports:
       - "1433:1433"
     volumes:
-      - sqlserver_data:/var/opt/mssql
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - stock-network
+      - mssql_data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'Stock123!' -Q \"SELECT 1\" -C"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q 'SELECT 1' -C || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 15
+      retries: 20
 
   api:
     build: .
     container_name: stock_api
     depends_on:
-      sqlserver:
+      db:
         condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: "docker"
+      SPRING_DATASOURCE_URL: "jdbc:sqlserver://db:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true"
+      SPRING_DATASOURCE_USERNAME: "sa"
+      SPRING_DATASOURCE_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+      SECURITY_FIREBASE_ENABLED: "false"
     ports:
       - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:sqlserver://sqlserver:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true
-      SPRING_DATASOURCE_USERNAME: stock_user
-      SPRING_DATOURCE_PASSWORD: StockUser123!
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-    networks:
-      - stock-network
 
 volumes:
-  sqlserver_data:
-
-networks:
-  stock-network:
+  mssql_data:

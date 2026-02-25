@@ -22,8 +22,7 @@ public class FirebaseSecurityConfig {
 
     public FirebaseSecurityConfig(
             CorsConfigurationSource corsConfigurationSource,
-            AppUserService appUserService
-    ) {
+            AppUserService appUserService) {
         this.corsConfigurationSource = corsConfigurationSource;
         this.appUserService = appUserService;
     }
@@ -36,8 +35,7 @@ public class FirebaseSecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            FirebaseAuthenticationFilter firebaseAuthenticationFilter
-    ) throws Exception {
+            FirebaseAuthenticationFilter firebaseAuthenticationFilter) throws Exception {
 
         if (!firebaseEnabled) {
             return http
@@ -52,6 +50,11 @@ public class FirebaseSecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**")
+                        .permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -59,8 +62,7 @@ public class FirebaseSecurityConfig {
                         .requestMatchers("/api/dashboard/**").authenticated()
                         .requestMatchers("/api/products/**").authenticated()
                         .requestMatchers("/api/stock/**").authenticated()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
