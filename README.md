@@ -6,7 +6,7 @@
 ![SQL Server](https://img.shields.io/badge/Database-SQL%20Server-lightgrey)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![Security](https://img.shields.io/badge/Security-Firebase-orange)
-![Build](https://img.shields.io/github/actions/workflow/status/USERNAME/REPO/ci.yml?label=build)
+![Build](https://img.shields.io/github/actions/workflow/status/JJOELJOAQUIN/stock-control-api/ci.yml?label=build)
 ![Coverage](https://img.shields.io/badge/Coverage-JaCoCo-yellowgreen)
 ![Quality](https://img.shields.io/badge/Code%20Quality-SonarQube-informational)
 
