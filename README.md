@@ -1,65 +1,103 @@
 Stock Control API
 
-API REST para gestión de:
+Backend profesional para gestión de inventario y caja con arquitectura limpia y seguridad basada en Firebase.
 
-Inventario por contexto (LOCAL / CONSULTORIO)
+---
 
-Movimientos de stock auditables
 
-Caja (ingresos / egresos / retenciones)
+1. Introducción
 
-Gastos
+Stock Control API es una aplicación backend diseñada para la gestión integral de inventario y operaciones financieras en entornos multi-contexto.
 
-Operaciones comerciales
+El sistema integra control de stock, registro auditable de movimientos, gestión de caja y autenticación segura basada en Firebase.
 
-Autenticación vía Firebase + roles persistidos
+---
 
-🏗 Arquitectura
+2. Objetivos del Sistema
 
-Arquitectura en capas:
+Garantizar consistencia transaccional en operaciones comerciales.
+
+Permitir inventario independiente por contexto.
+
+Registrar auditoría completa de movimientos.
+
+Integrar flujo financiero con control de retenciones.
+
+Implementar seguridad stateless y control de roles.
+
+
+---
+
+3. Arquitectura
+3.1 Arquitectura en Capas
 
 Controllers → Services → Repositories → Database
-Características técnicas
 
-Java 17
+Controllers
 
-Spring Boot 3.4.x
+Exponen endpoints REST.
 
-Spring Data JPA
+Services
 
-SQL Server (producción)
+Contienen lógica de negocio y validaciones de dominio.
 
-H2 (tests)
+Repositories
 
-Seguridad stateless con Firebase
+Adaptadores JPA desacoplados del dominio.
 
-Control de concurrencia optimista (@Version)
+3.2 Bounded Contexts
+Inventory Context
 
-Documentación OpenAPI (springdoc)
-
-📦 Dominio
 Product
-
-Entidad raíz del inventario.
-
-Maneja categoría, marca, scope (LOCAL / CONSULTORIO / BOTH)
-
-Permite código de barras único
-
-Soporta precio de costo opcional
 
 StockEntity
 
-Representa el stock actual de un producto en un contexto específico.
+StockMovement
 
-Restricción:
+Finance Context
+
+CashMovement
+
+Expense
+
+Authentication Context
+
+AppUser
+
+Role
+
+---
+
+4. Modelo de Dominio
+4.1 Product
+
+Entidad raíz del agregado Inventory.
+
+Responsabilidades:
+
+Definir alcance del producto.
+
+Mantener stock mínimo.
+
+Soportar código de barras único.
+
+Permitir precio de costo opcional.
+
+4.2 StockEntity
+
+Representa estado actual del inventario por producto y contexto.
+
+Restricción crítica:
 
 UNIQUE(product_id, context)
-StockMovement
+
+Incluye control de concurrencia optimista.
+
+4.3 StockMovement
 
 Historial auditable de movimientos.
 
-Tipos:
+Tipos soportados:
 
 INIT
 
@@ -69,33 +107,41 @@ OUT
 
 ADJUST
 
-CashMovement
+4.4 CashMovement
 
-Movimiento de caja asociado a:
+Modelo financiero vinculado a operaciones comerciales.
 
-Venta
+Funcionalidades:
 
-Pago proveedor
+Cálculo automático de retención.
 
-Gasto
+Cálculo de monto neto.
 
-Ajuste
+Asociación opcional a producto.
 
-Calcula automáticamente:
+4.5 Expense
 
-Retención (tarjetas)
+Entidad independiente para gastos operativos.
 
-Monto neto
+Soporta gastos recurrentes.
 
-Expense
+---
 
-Registro de gasto independiente.
 
-AppUser
+5. Seguridad
+5.1 Modelo
 
-Usuario autenticado por Firebase con rol persistido en DB.
+Autenticación con Firebase ID Token
 
-Roles:
+Validación mediante filtro personalizado
+
+Persistencia local de rol
+
+Stateless
+
+5.2 Control de Acceso
+
+Basado en roles:
 
 ADMIN
 
@@ -103,156 +149,83 @@ USER
 
 COSMETOLOGA
 
-🔐 Seguridad
+---
 
-Autenticación mediante Firebase ID Token
 
-Stateless
+6. Consistencia Transaccional
 
-Roles almacenados en app_users
+Las operaciones comerciales ejecutan:
 
-Filtro: FirebaseAuthenticationFilter
+Validación de producto
 
-Seguridad desactivable por profile
+Validación de contexto
 
-Header requerido:
+Modificación de stock
 
-Authorization: Bearer <firebase_token>
-🚀 Cómo ejecutar local
-1️⃣ Requisitos
+Registro de movimiento
 
-Java 17
+Registro de movimiento financiero
 
-Maven 3.9+
+Todo dentro de una única transacción.
 
-SQL Server 2021+
+---
 
-2️⃣ Variables de entorno
-SPRING_DATASOURCE_URL=jdbc:sqlserver://localhost:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true
-SPRING_DATASOURCE_USERNAME=stock_user
-SPRING_DATASOURCE_PASSWORD=TU_PASSWORD
-SPRING_JPA_HIBERNATE_DDL_AUTO=update
-SECURITY_FIREBASE_ENABLED=true
-3️⃣ Ejecutar
-mvn spring-boot:run
+7. Concurrencia
 
-Swagger:
+Se utiliza @Version en StockEntity para prevenir:
 
-http://localhost:8080/swagger-ui/index.html
-🧪 Tests
+Escrituras concurrentes inconsistentes
 
-Perfil test usa H2 en memoria.
+Condiciones de carrera
 
-Ejecutar:
+---
 
-mvn test
+8. Testing Strategy
 
-application-test.yml:
+Perfil test con H2 en memoria.
 
-spring:
-  datasource:
-    url: jdbc:h2:mem:testdb
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
+create-drop para aislamiento completo.
 
-security:
-  firebase:
-    enabled: false
-🐳 Docker
-Estructura recomendada
-/docker
-  /mssql-init
-    01-init.sql
-docker-compose.yml
-Dockerfile
-.env
-Levantar todo
-docker compose up --build
+Seguridad desactivada en tests.
 
-API:
+---
 
-http://localhost:8080
-📡 Endpoints principales
-Productos
-Método	Endpoint
-POST	/api/products
-GET	/api/products
-GET	/api/products/{id}
-PATCH	/api/products/{id}
-DELETE	/api/products/{id}
-GET	/api/products/scan/{barcode}
-Stock
-Método	Endpoint
-POST	/api/stock/{productId}/init
-GET	/api/stock/{productId}
-POST	/api/stock/{productId}/in
-POST	/api/stock/{productId}/out
-GET	/api/stock/below-minimum
-Operaciones comerciales
-Método	Endpoint
-POST	/api/business/sell
-POST	/api/business/purchase
-POST	/api/business/sell-by-barcode
-Caja
-Método	Endpoint
-POST	/api/cash-movements
-GET	/api/cash-movements
-Gastos
-Método	Endpoint
-POST	/api/expenses
-GET	/api/expenses
-🔄 Flujo de Venta (Ejemplo)
+9. Deploy Strategy
 
-Buscar producto
-
-Validar scope
-
-Verificar stock
-
-Registrar movimiento OUT
-
-Registrar movimiento de caja IN
-
-Aplicar retención si es tarjeta
-
-Todo en una única transacción.
-
-📈 Características técnicas avanzadas
-
-Concurrencia optimista en Stock
-
-Separación de dominio vs infraestructura
-
-Anti-corruption layer (JpaStockRepositoryAdapter)
-
-Context mapping (CashContext.toStockContext())
-
-Control de retención automática en tarjetas
-
-Validaciones de dominio en Services
-
-🏢 Deploy recomendado (Producción)
-
-Arquitectura sugerida:
+Entorno recomendado:
 
 VPS
- ├── Docker
- │    ├── stock_api
- │    └── sql_server
- └── Nginx (reverse proxy + SSL)
+└── Docker
+├── stock_api
+├── sql_server
+└── Nginx (reverse proxy + SSL)
 
-Variables productivas:
+Configuración productiva:
 
 SECURITY_FIREBASE_ENABLED=true
 
 SPRING_JPA_HIBERNATE_DDL_AUTO=validate
 
-📊 Estado del proyecto
+---
 
-✔ Inventario multi-contexto
-✔ Caja integrada
-✔ Movimientos auditables
-✔ Seguridad por roles
-✔ Dockerizable
-✔ Documentación OpenAPI
+10. Conclusión Técnica
+
+El sistema implementa:
+
+Modelado de dominio coherente
+
+Arquitectura desacoplada
+
+Persistencia robusta
+
+Seguridad profesional
+
+Escalabilidad horizontal vía Docker
+
+Se encuentra preparado para:
+
+Producción
+
+Escalabilidad
+
+Integración futura con frontend o microservicios
