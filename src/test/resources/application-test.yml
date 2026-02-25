@@ -12,6 +12,7 @@ spring:
     console:
       enabled: true
 
-app:
+  app:
   security:
-    disabled: true
+    firebase:
+      enabled: false
