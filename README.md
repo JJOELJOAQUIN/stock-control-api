@@ -91,6 +91,10 @@ SECURITY_FIREBASE_ENABLED=true
 
 ### Comando para correr el proyecto
 
+```pruebas locales con profiles
+mvn clean spring-boot:run -Dspring-boot.run.profiles=local
+
+
 ```bash
 mvn clean spring-boot:run
 ```
