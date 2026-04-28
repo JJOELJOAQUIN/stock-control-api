@@ -34,6 +34,12 @@ public class CashMovementService {
         if (req.source() == null)
             throw new IllegalArgumentException("source is required");
 
+        if (req.paymentMethod() == null)
+            throw new IllegalArgumentException("paymentMethod is required");
+
+        if (req.context() == null)
+            throw new IllegalArgumentException("context is required");
+
         BigDecimal percent = resolveRetentionPercent(req.paymentMethod(), req.retentionPercent());
 
         BigDecimal retention = amount.multiply(percent).setScale(2, RoundingMode.HALF_UP);
@@ -49,6 +55,27 @@ public class CashMovementService {
         m.setNetAmount(net);
         m.setComment(req.comment());
         m.setReferenceId(req.referenceId());
+
+        if (req.source() == CashSource.PROCEDURE && req.context() == CashContext.CONSULTORIO) {
+            BigDecimal doctorPercent = req.doctorSharePercent();
+            BigDecimal cosmetologistPercent = req.cosmetologistSharePercent();
+
+            if (doctorPercent == null || cosmetologistPercent == null) {
+                throw new IllegalArgumentException(
+                        "doctorSharePercent and cosmetologistSharePercent are required for procedure income");
+            }
+
+            BigDecimal total = doctorPercent.add(cosmetologistPercent);
+            if (total.compareTo(BigDecimal.ONE) != 0) {
+                throw new IllegalArgumentException("doctorSharePercent + cosmetologistSharePercent must equal 1");
+            }
+
+            BigDecimal doctorShare = net.multiply(doctorPercent).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal cosmetologistShare = net.subtract(doctorShare).setScale(2, RoundingMode.HALF_UP);
+
+            m.setDoctorShare(doctorShare);
+            m.setCosmetologistShare(cosmetologistShare);
+        }
 
         return repository.save(m);
     }
@@ -76,6 +103,3 @@ public class CashMovementService {
     }
 
 }
-
-
-

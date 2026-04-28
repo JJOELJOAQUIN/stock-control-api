@@ -9,7 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,7 +22,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(StockMovementController.class)
 @AutoConfigureMockMvc(addFilters = false)
-
 class StockMovementControllerTest {
 
   @Autowired
@@ -71,8 +70,8 @@ class StockMovementControllerTest {
     UUID productId = UUID.randomUUID();
     Pageable pageable = PageRequest.of(0, 10);
 
-    OffsetDateTime from = OffsetDateTime.parse("2026-02-01T00:00:00-03:00");
-    OffsetDateTime to = OffsetDateTime.parse("2026-02-23T23:59:59-03:00");
+    LocalDateTime from = LocalDateTime.parse("2026-02-01T00:00:00");
+    LocalDateTime to = LocalDateTime.parse("2026-02-23T23:59:59");
 
     when(service.search(
         eq(productId),
@@ -92,8 +91,8 @@ class StockMovementControllerTest {
         .param("reason", "COMPRA_PROVEEDOR")
         .param("minQty", "1")
         .param("maxQty", "100")
-        .param("from", from.toString())
-        .param("to", to.toString())
+        .param("from", "2026-02-01T00:00:00")
+        .param("to", "2026-02-23T23:59:59")
         .param("page", "0")
         .param("size", "10"))
         .andExpect(status().isOk())

@@ -6,14 +6,22 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jowi.stock.stock.StockContext;
+import com.jowi.stock.stock.StockRepository;
+
+
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
 
   private final ProductRepository productRepository;
+  private final StockRepository stockRepository;
 
-  public ProductServiceImpl(ProductRepository productRepository) {
+  public ProductServiceImpl(
+      ProductRepository productRepository,
+      StockRepository stockRepository) {
     this.productRepository = productRepository;
+    this.stockRepository = stockRepository;
   }
 
   @Override
@@ -34,6 +42,7 @@ public class ProductServiceImpl implements ProductService {
 
     product.setScope(request.scope());
     product.setBarcode(request.barcode());
+    product.setCostPrice(request.costPrice());
 
     validateProduct(product);
 
@@ -42,36 +51,26 @@ public class ProductServiceImpl implements ProductService {
 
   @Override
   public Product getById(UUID id) {
-
-    Product product = productRepository
+    return productRepository
         .findById(id)
         .orElseThrow(() -> new IllegalArgumentException(
             "Product not found: " + id));
-
-    return product;
   }
 
   @Override
   public List<Product> getAll() {
-
-    List<Product> products = productRepository.findAll();
-
-    return products;
+    return productRepository.findAll();
   }
 
   @Override
   public void deactivate(UUID id) {
-
     Product product = getById(id);
-
     product.setActive(false);
-
     productRepository.save(product);
   }
 
   @Override
   public Product update(UUID id, UpdateProductRequest r) {
-
     Product p = getById(id);
 
     p.setName(r.name());
@@ -81,6 +80,7 @@ public class ProductServiceImpl implements ProductService {
     p.setBrand(r.brand());
     p.setExpirable(r.expirable());
     p.setActive(r.active());
+    p.setCostPrice(r.costPrice());
 
     validateProduct(p);
 
@@ -89,31 +89,23 @@ public class ProductServiceImpl implements ProductService {
 
   @Override
   public Product updatePartial(UUID id, PatchProductRequest r) {
-
     Product p = getById(id);
 
-    if (r.name() != null)
-      p.setName(r.name());
-    if (r.description() != null)
-      p.setDescription(r.description());
-    if (r.minimumStock() != null)
-      p.setMinimumStock(r.minimumStock());
-    if (r.category() != null)
-      p.setCategory(r.category());
-    if (r.brand() != null)
-      p.setBrand(r.brand());
-    if (r.expirable() != null)
-      p.setExpirable(r.expirable());
-    if (r.active() != null)
-      p.setActive(r.active());
+    if (r.name() != null) p.setName(r.name());
+    if (r.description() != null) p.setDescription(r.description());
+    if (r.minimumStock() != null) p.setMinimumStock(r.minimumStock());
+    if (r.category() != null) p.setCategory(r.category());
+    if (r.brand() != null) p.setBrand(r.brand());
+    if (r.expirable() != null) p.setExpirable(r.expirable());
+    if (r.active() != null) p.setActive(r.active());
 
     validateProduct(p);
 
     return productRepository.save(p);
   }
 
+  @Override
   public Product getByBarcode(String barcode) {
-
     if (barcode == null || barcode.isBlank()) {
       throw new IllegalArgumentException("Barcode is required");
     }
@@ -122,11 +114,7 @@ public class ProductServiceImpl implements ProductService {
         .orElseThrow(() -> new IllegalArgumentException("Product not found for barcode: " + barcode));
   }
 
-  // ========================
-  // VALIDACIONES DE DOMINIO
-  // ========================
   private void validateProduct(Product product) {
-
     if (product == null) {
       throw new IllegalArgumentException("Product cannot be null");
     }
@@ -147,13 +135,11 @@ public class ProductServiceImpl implements ProductService {
   @Override
   @Transactional
   public void bulkCreate(List<CreateProductRequest> requests) {
-
     if (requests == null || requests.isEmpty()) {
       throw new IllegalArgumentException("Product list cannot be empty");
     }
 
     for (CreateProductRequest req : requests) {
-
       Product product = new Product();
       product.setName(req.name());
       product.setDescription(req.description());
@@ -163,6 +149,7 @@ public class ProductServiceImpl implements ProductService {
       product.setScope(req.scope());
       product.setExpirable(req.expirable() != null ? req.expirable() : true);
       product.setBarcode(req.barcode());
+      product.setCostPrice(req.costPrice());
 
       validateProduct(product);
 
@@ -173,14 +160,12 @@ public class ProductServiceImpl implements ProductService {
   @Override
   @Transactional
   public void assignBarcode(UUID productId, String barcode) {
-
     if (barcode == null || barcode.isBlank()) {
       throw new IllegalArgumentException("Barcode is required");
     }
 
     Product product = getById(productId);
 
-    // Verificar que no exista otro producto con ese barcode
     productRepository.findByBarcode(barcode)
         .ifPresent(existing -> {
           if (!existing.getId().equals(productId)) {
@@ -192,4 +177,39 @@ public class ProductServiceImpl implements ProductService {
     productRepository.save(product);
   }
 
+@Override
+public List<ProductWithStockResponse> getAllWithStock(StockContext context) {
+  return productRepository.findAll().stream()
+      .filter(Product::getActive)
+      .filter(product ->
+          product.getScope() == ProductScope.BOTH ||
+          product.getScope().name().equals(context.name()))
+      .map(product -> {
+        int currentStock = 0;
+        boolean belowMinimum = true;
+
+        var stockOpt = stockRepository.findByProductIdAndContext(product.getId(), context);
+
+        if (stockOpt.isPresent()) {
+          var stock = stockOpt.get();
+          currentStock = stock.getCurrent();
+          belowMinimum = stock.isBelowMinimum();
+        }
+
+        return new ProductWithStockResponse(
+            product.getId(),
+            product.getName(),
+            product.getBarcode(),
+            product.getBrand().name(),
+            product.getCategory().name(),
+            product.getScope().name(),
+            product.getMinimumStock(),
+            currentStock,
+            belowMinimum,
+            product.getActive(),
+            product.getCostPrice()
+        );
+      })
+      .toList();
+}
 }

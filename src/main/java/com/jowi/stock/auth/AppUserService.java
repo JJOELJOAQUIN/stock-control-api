@@ -38,6 +38,6 @@ public class AppUserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         user.setRole(newRole);
-        // Nota: por @Transactional, se persiste al commit
+        firebaseRoleService.setRole(firebaseUid, newRole);
     }
 }

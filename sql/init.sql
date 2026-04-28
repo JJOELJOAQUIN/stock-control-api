@@ -9,7 +9,7 @@ GO
 
 IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'stock_user')
 BEGIN
-    CREATE LOGIN stock_user WITH PASSWORD = 'StockUser123!';
+    -- CREATE LOGIN stock_user WITH PASSWORD = 'change-me';
 END
 GO
 

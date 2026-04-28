@@ -1,19 +1,14 @@
 package com.jowi.stock.integration;
-
-import com.jowi.stock.TestSecurityConfig;
 import com.jowi.stock.business.BusinessOperationService;
 import com.jowi.stock.cash.*;
 import com.jowi.stock.product.*;
 import com.jowi.stock.stock.*;
 import com.jowi.stock.movement.*;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -52,7 +47,8 @@ class SellFlowIntegrationTest {
                 ProductBrand.GENERICO,
                 true,
                 ProductScope.BOTH,
-                null
+                null,
+                new BigDecimal("2000.00")
         );
 
         Product product = productService.create(req);

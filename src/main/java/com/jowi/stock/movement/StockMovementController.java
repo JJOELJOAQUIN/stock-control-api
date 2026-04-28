@@ -26,8 +26,8 @@ public class StockMovementController {
       @RequestParam(required = false) StockMovementReason reason,
       @RequestParam(required = false) Integer minQty,
       @RequestParam(required = false) Integer maxQty,
-      @RequestParam(required = false) OffsetDateTime from,
-      @RequestParam(required = false) OffsetDateTime to,
+      @RequestParam(required = false) java.time.LocalDateTime from,
+      @RequestParam(required = false) java.time.LocalDateTime to,
       @RequestParam StockContext context,
       Pageable pageable) {
     return ResponseEntity.ok(

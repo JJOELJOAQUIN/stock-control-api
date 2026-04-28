@@ -3,6 +3,8 @@ package com.jowi.stock.stock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jowi.stock.product.CreateProductRequest;
 import com.jowi.stock.product.Product;
@@ -45,7 +47,9 @@ class StockIntegrationTest {
                 true,
                 ProductScope.BOTH,
 
-                null);
+                null,
+                new BigDecimal("2000.00")
+        );
 
         String productResponse = mockMvc.perform(post("/api/products")
                 .contentType(MediaType.APPLICATION_JSON)

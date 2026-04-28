@@ -3,6 +3,8 @@ package com.jowi.stock.product;
 import java.util.List;
 import java.util.UUID;
 
+import com.jowi.stock.stock.StockContext;
+
 public interface ProductService {
 
   Product create(CreateProductRequest request);
@@ -21,6 +23,7 @@ public interface ProductService {
 
   void bulkCreate(List<CreateProductRequest> requests);
   void assignBarcode(UUID productId, String barcode);
+ List<ProductWithStockResponse> getAllWithStock(StockContext context);
 
 
 }

@@ -13,10 +13,11 @@ public record CashMovementResponse(
     BigDecimal amount,
     BigDecimal retention,
     BigDecimal netAmount,
+    BigDecimal doctorShare,
+    BigDecimal cosmetologistShare,
     String comment,
     UUID referenceId,
-    Instant createdAt
-) {
+    Instant createdAt) {
   public static CashMovementResponse from(CashMovement m) {
     return new CashMovementResponse(
         m.getId(),
@@ -27,9 +28,10 @@ public record CashMovementResponse(
         m.getAmount(),
         m.getRetention(),
         m.getNetAmount(),
+        m.getDoctorShare(),
+        m.getCosmetologistShare(),
         m.getComment(),
         m.getReferenceId(),
-        m.getCreatedAt()
-    );
+        m.getCreatedAt());
   }
 }

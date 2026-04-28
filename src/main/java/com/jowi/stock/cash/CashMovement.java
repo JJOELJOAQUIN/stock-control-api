@@ -131,4 +131,20 @@ public class CashMovement extends BaseEntity {
   public void setReferenceId(java.util.UUID referenceId) {
     this.referenceId = referenceId;
   }
+
+  public BigDecimal getDoctorShare() {
+    return doctorShare;
+  }
+
+  public void setDoctorShare(BigDecimal doctorShare) {
+    this.doctorShare = doctorShare;
+  }
+
+  public BigDecimal getCosmetologistShare() {
+    return cosmetologistShare;
+  }
+
+  public void setCosmetologistShare(BigDecimal cosmetologistShare) {
+    this.cosmetologistShare = cosmetologistShare;
+  }
 }

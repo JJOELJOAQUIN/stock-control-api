@@ -45,7 +45,10 @@ class CashMovementControllerTest {
                 new BigDecimal("1000.00"),
                 null,
                 "venta mostrador",
-                UUID.randomUUID());
+                UUID.randomUUID(),
+                null,
+                null
+                                                        );
 
         CashMovement created = new CashMovement();
         created.setType(req.type());

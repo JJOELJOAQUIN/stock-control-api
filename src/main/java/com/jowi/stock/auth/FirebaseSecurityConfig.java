@@ -10,6 +10,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import jakarta.annotation.PostConstruct;
+
 @Configuration
 @EnableMethodSecurity
 public class FirebaseSecurityConfig {
@@ -27,21 +29,34 @@ public class FirebaseSecurityConfig {
         this.appUserService = appUserService;
     }
 
+    @PostConstruct
+    public void logSecurityMode() {
+        System.out.println(">>> security.firebase.enabled = " + firebaseEnabled);
+    }
+
     @Bean
     public FirebaseAuthenticationFilter firebaseAuthenticationFilter() {
         return new FirebaseAuthenticationFilter(appUserService);
     }
 
     @Bean
+    public DevAdminAuthenticationFilter devAdminAuthenticationFilter() {
+        return new DevAdminAuthenticationFilter();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            FirebaseAuthenticationFilter firebaseAuthenticationFilter) throws Exception {
+            FirebaseAuthenticationFilter firebaseAuthenticationFilter,
+            DevAdminAuthenticationFilter devAdminAuthenticationFilter) throws Exception {
 
         if (!firebaseEnabled) {
             return http
                     .csrf(csrf -> csrf.disable())
                     .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                    .addFilterBefore(devAdminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .build();
         }
 

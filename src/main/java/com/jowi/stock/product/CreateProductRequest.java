@@ -1,5 +1,7 @@
 package com.jowi.stock.product;
 
+import java.math.BigDecimal;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,6 +14,6 @@ public record CreateProductRequest(
     @NotNull ProductBrand brand,
     Boolean expirable,
     @NotNull ProductScope scope,
-    String barcode
-     
+    String barcode,
+   @NotNull BigDecimal costPrice
 ) {}

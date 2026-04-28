@@ -98,6 +98,7 @@ mvn clean spring-boot:run -Dspring-boot.run.profiles=local
 ```bash
 mvn clean spring-boot:run
 ```
+./mvnw clean spring-boot:run -Dspring-boot.run.profiles=dev
 
 Swagger disponible en:
 

@@ -6,8 +6,6 @@ import com.jowi.stock.stock.StockContext;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-
-import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -40,8 +38,7 @@ public class StockMovementService {
     validate(context, type, quantity, reasonType);
 
     Product product = productRepository.findById(productId)
-        .orElseThrow(() ->
-            new EntityNotFoundException("Product not found: " + productId));
+        .orElseThrow(() -> new EntityNotFoundException("Product not found: " + productId));
 
     StockMovement movement = new StockMovement();
     movement.setProduct(product);
@@ -61,23 +58,22 @@ public class StockMovementService {
       StockMovementReason reason,
       Integer minQty,
       Integer maxQty,
-      OffsetDateTime from,
-      OffsetDateTime to,
+      java.time.LocalDateTime from,
+      java.time.LocalDateTime to,
       Pageable pageable) {
 
     if (productId == null) {
       throw new IllegalArgumentException("productId is required");
     }
 
-    Specification<StockMovement> spec =
-        Specification.where(StockMovementSpecification.byProduct(productId))
-            .and(StockMovementSpecification.byContext(context))
-            .and(StockMovementSpecification.byType(type))
-            .and(StockMovementSpecification.byReason(reason))
-            .and(StockMovementSpecification.quantityGte(minQty))
-            .and(StockMovementSpecification.quantityLte(maxQty))
-            .and(StockMovementSpecification.fromDate(from))
-            .and(StockMovementSpecification.toDate(to));
+    Specification<StockMovement> spec = Specification.where(StockMovementSpecification.byProduct(productId))
+        .and(StockMovementSpecification.byContext(context))
+        .and(StockMovementSpecification.byType(type))
+        .and(StockMovementSpecification.byReason(reason))
+        .and(StockMovementSpecification.quantityGte(minQty))
+        .and(StockMovementSpecification.quantityLte(maxQty))
+        .and(StockMovementSpecification.fromDate(from))
+        .and(StockMovementSpecification.toDate(to));
 
     return repository.findAll(spec, pageable);
   }

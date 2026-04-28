@@ -21,7 +21,6 @@ public class ProductController {
 
   private final StockService stockService;
 
-
   public ProductController(ProductService productService, StockService stockService) {
     this.productService = productService;
     this.stockService = stockService;
@@ -101,35 +100,36 @@ public class ProductController {
     return ResponseEntity.ok().build();
   }
 
-
-@GetMapping("/scan")
-public ResponseEntity<ProductScanWithStockResponse> scanWithContext(
-    @RequestParam String barcode,
-    @RequestParam StockContext context) {
-
-  Product product = productService.getByBarcode(barcode);
-
-  Stock stock;
-
-  try {
-      stock = stockService.getStock(product.getId(), context);
-  } catch (Exception e) {
-      stockService.initStock(product.getId(), context, 0);
-      stock = stockService.getStock(product.getId(), context);
+  @GetMapping("/with-stock")
+  public ResponseEntity<List<ProductWithStockResponse>> getAllWithStock(
+      @RequestParam StockContext context) {
+    return ResponseEntity.ok(productService.getAllWithStock(context));
   }
 
-  return ResponseEntity.ok(
-      new ProductScanWithStockResponse(
-          product.getId().toString(),
-          product.getName(),
-          product.getBarcode(),
-          product.getScope().name(),
-          stock.getCurrent(),
-          stock.isBelowMinimum()
-      )
-  );
-}
+  @GetMapping("/scan")
+  public ResponseEntity<ProductScanWithStockResponse> scanWithContext(
+      @RequestParam String barcode,
+      @RequestParam StockContext context) {
 
+    Product product = productService.getByBarcode(barcode);
 
+    Stock stock;
+
+    try {
+      stock = stockService.getStock(product.getId(), context);
+    } catch (Exception e) {
+      stockService.initStock(product.getId(), context, 0);
+      stock = stockService.getStock(product.getId(), context);
+    }
+
+    return ResponseEntity.ok(
+        new ProductScanWithStockResponse(
+            product.getId().toString(),
+            product.getName(),
+            product.getBarcode(),
+            product.getScope().name(),
+            stock.getCurrent(),
+            stock.isBelowMinimum()));
+  }
 
 }

@@ -55,7 +55,9 @@ public class BusinessOperationService {
                                                 amount,
                                                 null,
                                                 comment,
-                                                productId));
+                                                productId,
+                                                null,
+                                                null));
         }
 
         // =========================
@@ -70,10 +72,12 @@ public class BusinessOperationService {
 
                 StockContext stockContext = context.toStockContext();
 
-                // Ingreso stock
+                if (!stockService.exists(productId, stockContext)) {
+                        stockService.initStock(productId, stockContext, 0);
+                }
+
                 stockService.increase(productId, stockContext, quantity);
 
-                // Egreso dinero
                 cashService.create(
                                 new CreateCashMovementRequest(
                                                 CashMovementType.OUT,
@@ -83,7 +87,9 @@ public class BusinessOperationService {
                                                 amount,
                                                 BigDecimal.ZERO,
                                                 comment,
-                                                productId));
+                                                productId,
+                                                null,
+                                                null));
         }
 
         public void sellByBarcode(
@@ -124,6 +130,8 @@ public class BusinessOperationService {
                                                 amount,
                                                 null,
                                                 comment,
-                                                product.getId()));
+                                                product.getId(),
+                                                null,
+                                                null));
         }
 }

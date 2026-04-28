@@ -9,6 +9,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,7 +42,9 @@ class StockIntegrationTest {
                 ProductBrand.MAGISTRALES,
                 true,
                 ProductScope.BOTH,
-                null);
+                null,
+                new BigDecimal("2000.00")
+            );
 
         Product product = productService.create(req);
 
@@ -89,7 +93,9 @@ class StockIntegrationTest {
                 ProductBrand.MAGISTRALES,
                 true,
                 ProductScope.BOTH,
-                null);
+                null,
+                new BigDecimal("2000.00")
+       );
         Product product = productService.create(req);
         UUID id = product.getId();
 
@@ -109,7 +115,9 @@ class StockIntegrationTest {
                 ProductBrand.MAGISTRALES,
                 true,
                 ProductScope.BOTH,
-                null);
+                null,
+                new BigDecimal("2000.00")
+        );
 
         Product product = productService.create(req);
         UUID id = product.getId();
