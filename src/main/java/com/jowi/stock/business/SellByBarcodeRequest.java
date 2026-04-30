@@ -2,6 +2,7 @@ package com.jowi.stock.business;
 
 import java.math.BigDecimal;
 
+import com.jowi.stock.cash.CashActor;
 import com.jowi.stock.cash.CashContext;
 import com.jowi.stock.cash.PaymentMethod;
 
@@ -21,5 +22,8 @@ public record SellByBarcodeRequest(
 
         @NotNull CashContext context,
 
-        String comment) {
+        String comment,
+
+        @NotNull CashActor performedBy
+ ) {
 }

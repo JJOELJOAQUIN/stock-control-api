@@ -127,4 +127,20 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, UUID
       @Param("year") int year,
       @Param("month") int month);
 
+  @Query("""
+        SELECT
+          COALESCE(SUM(c.netAmount), 0),
+          COALESCE(SUM(c.doctorShare), 0),
+          COALESCE(SUM(c.cosmetologistShare), 0)
+        FROM CashMovement c
+        WHERE c.type = 'IN'
+          AND c.context = :context
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
+      """)
+  Object[] cashSplitByContextAndDateRange(
+      @Param("context") CashContext context,
+      @Param("from") java.time.Instant from,
+      @Param("to") java.time.Instant to);
+
 }

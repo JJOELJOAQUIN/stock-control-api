@@ -26,12 +26,18 @@ public class CashMovementController {
   @GetMapping
   public ResponseEntity<Page<CashMovementResponse>> list(
       @RequestParam(required = false) CashContext context,
-      Pageable pageable
-  ) {
+      Pageable pageable) {
     Page<CashMovement> page = (context == null)
         ? service.list(pageable)
         : service.listByContext(context, pageable);
 
     return ResponseEntity.ok(page.map(CashMovementResponse::from));
+  }
+
+  @GetMapping("/daily-split")
+  public ResponseEntity<CashDailySplitResponse> dailySplit(
+      @RequestParam CashContext context,
+      @RequestParam(required = false) java.time.LocalDate date) {
+    return ResponseEntity.ok(service.dailySplit(context, date));
   }
 }

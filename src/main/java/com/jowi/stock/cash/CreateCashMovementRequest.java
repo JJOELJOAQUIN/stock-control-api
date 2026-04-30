@@ -13,5 +13,6 @@ public record CreateCashMovementRequest(
                 String comment,
                 UUID referenceId,
                 BigDecimal doctorSharePercent,
-                BigDecimal cosmetologistSharePercent) {
+                BigDecimal cosmetologistSharePercent,
+                CashActor performedBy) {
 }

@@ -47,7 +47,8 @@ class CashMovementControllerTest {
                 "venta mostrador",
                 UUID.randomUUID(),
                 null,
-                null
+                null,
+                CashActor.MEDICA
                                                         );
 
         CashMovement created = new CashMovement();

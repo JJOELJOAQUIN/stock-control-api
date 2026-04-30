@@ -66,7 +66,7 @@ class BusinessOperationControllerTest {
                 new BigDecimal("800.00"),
                 PaymentMethod.DEBIT,
                 CashContext.LOCAL,
-                "venta"
+                "venta", null
         );
 
         mvc.perform(post("/api/business/sell-by-barcode")

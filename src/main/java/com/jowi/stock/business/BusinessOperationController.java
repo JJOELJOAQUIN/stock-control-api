@@ -15,12 +15,8 @@ public class BusinessOperationController {
     this.service = service;
   }
 
-  // =========================
-  // VENTA DE PRODUCTO
-  // =========================
   @PostMapping("/sell")
   public ResponseEntity<Void> sell(@Valid @RequestBody SellProductRequest req) {
-
     service.sellProduct(
         req.productId(),
         req.quantity(),
@@ -32,12 +28,8 @@ public class BusinessOperationController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-  // =========================
-  // COMPRA A PROVEEDOR
-  // =========================
   @PostMapping("/purchase")
   public ResponseEntity<Void> purchase(@Valid @RequestBody PurchaseProductRequest req) {
-
     service.purchaseProduct(
         req.productId(),
         req.quantity(),
@@ -58,9 +50,9 @@ public class BusinessOperationController {
         req.amount(),
         req.paymentMethod(),
         req.context(),
-        req.comment());
+        req.comment(),
+        req.performedBy());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
-
 }
