@@ -34,5 +34,9 @@ build/
 
 .env
 .env.*
-*.envsrc/main/resources/firebase-service-account.json
+
+
 src/main/resources/firebase-service-account.json
+
+
+
