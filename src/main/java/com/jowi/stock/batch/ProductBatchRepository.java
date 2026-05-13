@@ -1,0 +1,24 @@
+package com.jowi.stock.batch;
+
+import com.jowi.stock.stock.StockContext;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+public interface ProductBatchRepository extends JpaRepository<ProductBatch, UUID> {
+
+  List<ProductBatch> findByContextAndExpirationDateBetweenAndQuantityCurrentGreaterThanOrderByExpirationDateAsc(
+      StockContext context,
+      LocalDate from,
+      LocalDate to,
+      Integer quantityCurrent
+  );
+
+  List<ProductBatch> findByProductIdAndContextAndQuantityCurrentGreaterThanOrderByExpirationDateAsc(
+      UUID productId,
+      StockContext context,
+      Integer quantityCurrent
+  );
+}

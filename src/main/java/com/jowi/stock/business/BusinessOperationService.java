@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
+import com.jowi.stock.batch.ProductBatchService;
 import com.jowi.stock.cash.CashActor;
 import com.jowi.stock.cash.CashContext;
 import com.jowi.stock.cash.CashMovementService;
@@ -15,7 +16,7 @@ import com.jowi.stock.cash.PaymentMethod;
 import com.jowi.stock.product.ProductService;
 import com.jowi.stock.stock.StockContext;
 import com.jowi.stock.stock.StockService;
-
+import java.time.LocalDate;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -25,14 +26,17 @@ public class BusinessOperationService {
   private final StockService stockService;
   private final CashMovementService cashService;
   private final ProductService productService;
+  private final ProductBatchService batchService;
 
   public BusinessOperationService(
       StockService stockService,
       CashMovementService cashService,
-      ProductService productService) {
+      ProductService productService,
+      ProductBatchService batchService) {
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
+    this.batchService = batchService;
   }
 
   public void sellProduct(
@@ -67,7 +71,9 @@ public class BusinessOperationService {
       int quantity,
       BigDecimal amount,
       CashContext context,
-      String comment) {
+      String comment,
+      LocalDate expirationDate,
+      String lotNumber) {
 
     StockContext stockContext = context.toStockContext();
 
@@ -77,6 +83,13 @@ public class BusinessOperationService {
 
     stockService.increase(productId, stockContext, quantity);
 
+    batchService.createBatch(
+        productId,
+        stockContext,
+        quantity,
+        expirationDate,
+        lotNumber);
+        
     cashService.create(
         new CreateCashMovementRequest(
             CashMovementType.OUT,

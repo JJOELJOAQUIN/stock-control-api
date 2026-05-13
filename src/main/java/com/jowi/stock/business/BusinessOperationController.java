@@ -35,7 +35,9 @@ public class BusinessOperationController {
         req.quantity(),
         req.amount(),
         req.context(),
-        req.comment());
+        req.comment(),
+        req.expirationDate(),
+        req.lotNumber());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }

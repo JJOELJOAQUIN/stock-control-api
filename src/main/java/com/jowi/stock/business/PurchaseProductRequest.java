@@ -4,19 +4,22 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 import com.jowi.stock.cash.CashContext;
 
 public record PurchaseProductRequest(
 
-    @NotNull UUID productId,
+        @NotNull UUID productId,
 
-    @Positive int quantity,
+        @Positive int quantity,
 
-    @NotNull BigDecimal amount,
+        @NotNull BigDecimal amount,
 
-    CashContext context,
+        CashContext context,
 
-    String comment
-) {}
+        String comment,
+        LocalDate expirationDate,
+        String lotNumber) {
+}
