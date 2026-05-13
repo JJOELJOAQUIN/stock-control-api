@@ -1,9 +1,22 @@
 package com.jowi.stock.integration;
-import com.jowi.stock.business.BusinessOperationService;
-import com.jowi.stock.cash.*;
-import com.jowi.stock.product.*;
-import com.jowi.stock.stock.*;
-import com.jowi.stock.movement.*;
+import com.jowi.stock.business.services.BusinessOperationService;
+import com.jowi.stock.cash.entities.CashMovement;
+import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.enums.CashMovementType;
+import com.jowi.stock.cash.enums.CashSource;
+import com.jowi.stock.cash.enums.PaymentMethod;
+import com.jowi.stock.cash.repositories.CashMovementRepository;
+import com.jowi.stock.product.dto.CreateProductRequest;
+import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ProductBrand;
+import com.jowi.stock.product.enums.ProductCategory;
+import com.jowi.stock.product.enums.ProductScope;
+import com.jowi.stock.product.services.interfaces.ProductService;
+import com.jowi.stock.stock.entities.Stock;
+import com.jowi.stock.stock.enums.StockContext;
+import com.jowi.stock.stock.services.StockService;
+import com.jowi.stock.movement.repositories.StockMovementRepository;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;

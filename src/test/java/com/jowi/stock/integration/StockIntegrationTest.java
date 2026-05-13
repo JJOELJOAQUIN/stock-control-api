@@ -1,19 +1,29 @@
 package com.jowi.stock.integration;
 
-import com.jowi.stock.product.*;
-import com.jowi.stock.stock.*;
-import com.jowi.stock.movement.*;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.jowi.stock.movement.repositories.StockMovementRepository;
+import com.jowi.stock.product.dto.CreateProductRequest;
+import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ProductBrand;
+import com.jowi.stock.product.enums.ProductCategory;
+import com.jowi.stock.product.enums.ProductScope;
+import com.jowi.stock.product.services.interfaces.ProductService;
+import com.jowi.stock.stock.entities.Stock;
+import com.jowi.stock.stock.enums.StockContext;
+import com.jowi.stock.stock.services.StockService;
 
 @SpringBootTest
 @ActiveProfiles("test")

@@ -1,7 +1,7 @@
 package com.jowi.stock.dashboard;
 
-import com.jowi.stock.movement.StockMovementRepository;
-import com.jowi.stock.movement.StockMovementType;
+import com.jowi.stock.movement.enums.StockMovementType;
+import com.jowi.stock.movement.repositories.StockMovementRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;

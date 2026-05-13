@@ -13,8 +13,12 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jowi.stock.cash.CashContext;
-import com.jowi.stock.cash.PaymentMethod;
+import com.jowi.stock.business.controllers.BusinessOperationController;
+import com.jowi.stock.business.dto.SellByBarcodeRequest;
+import com.jowi.stock.business.dto.SellProductRequest;
+import com.jowi.stock.business.services.BusinessOperationService;
+import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.enums.PaymentMethod;
 
 @WebMvcTest(BusinessOperationController.class)
 @AutoConfigureMockMvc(addFilters = false)

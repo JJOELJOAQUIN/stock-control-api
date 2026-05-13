@@ -1,13 +1,13 @@
 package com.jowi.stock.dashboard;
 
-import com.jowi.stock.product.ProductRepository;
-import com.jowi.stock.stock.JpaStockRepository;
-import com.jowi.stock.stock.StockContext;
-import com.jowi.stock.stock.StockEntity;
-import com.jowi.stock.cash.CashContext;
-import com.jowi.stock.cash.CashMovementRepository;
-import com.jowi.stock.movement.StockMovementRepository;
-import com.jowi.stock.movement.StockMovementType;
+import com.jowi.stock.stock.entities.StockEntity;
+import com.jowi.stock.stock.enums.StockContext;
+import com.jowi.stock.stock.repositories.JpaStockRepository;
+import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.repositories.CashMovementRepository;
+import com.jowi.stock.movement.enums.StockMovementType;
+import com.jowi.stock.movement.repositories.StockMovementRepository;
+import com.jowi.stock.product.repositories.ProductRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;

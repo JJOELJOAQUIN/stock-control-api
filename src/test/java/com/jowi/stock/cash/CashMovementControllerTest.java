@@ -1,6 +1,16 @@
 package com.jowi.stock.cash;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jowi.stock.cash.controllers.CashMovementController;
+import com.jowi.stock.cash.dto.CreateCashMovementRequest;
+import com.jowi.stock.cash.entities.CashMovement;
+import com.jowi.stock.cash.enums.CashActor;
+import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.enums.CashMovementType;
+import com.jowi.stock.cash.enums.CashSource;
+import com.jowi.stock.cash.enums.PaymentMethod;
+import com.jowi.stock.cash.services.CashMovementService;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;

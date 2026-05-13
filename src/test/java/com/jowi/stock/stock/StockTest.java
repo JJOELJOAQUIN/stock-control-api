@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
+import com.jowi.stock.stock.entities.Stock;
+
 class StockTest {
 
   @Test

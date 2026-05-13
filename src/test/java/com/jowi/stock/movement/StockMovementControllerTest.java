@@ -1,6 +1,5 @@
 package com.jowi.stock.movement;
 
-import com.jowi.stock.stock.StockContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -8,6 +7,13 @@ import org.springframework.data.domain.*;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import com.jowi.stock.movement.controllers.StockMovementController;
+import com.jowi.stock.movement.entities.StockMovement;
+import com.jowi.stock.movement.enums.StockMovementReason;
+import com.jowi.stock.movement.enums.StockMovementType;
+import com.jowi.stock.movement.services.StockMovementService;
+import com.jowi.stock.stock.enums.StockContext;
 
 import java.time.LocalDateTime;
 import java.util.List;

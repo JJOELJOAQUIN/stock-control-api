@@ -1,6 +1,9 @@
 package com.jowi.stock.dashboard;
 
-import com.jowi.stock.cash.*;
+import com.jowi.stock.cash.enums.CashMovementType;
+import com.jowi.stock.cash.enums.PaymentMethod;
+import com.jowi.stock.cash.repositories.CashMovementRepository;
+
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;

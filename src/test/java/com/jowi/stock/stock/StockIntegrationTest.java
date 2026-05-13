@@ -6,11 +6,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.math.BigDecimal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jowi.stock.product.CreateProductRequest;
-import com.jowi.stock.product.Product;
-import com.jowi.stock.product.ProductBrand;
-import com.jowi.stock.product.ProductCategory;
-import com.jowi.stock.product.ProductScope;
+import com.jowi.stock.product.dto.CreateProductRequest;
+import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ProductBrand;
+import com.jowi.stock.product.enums.ProductCategory;
+import com.jowi.stock.product.enums.ProductScope;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

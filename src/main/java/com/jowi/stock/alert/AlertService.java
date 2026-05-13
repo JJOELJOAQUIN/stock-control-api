@@ -1,9 +1,9 @@
 package com.jowi.stock.alert;
 
-import com.jowi.stock.product.Product;
-import com.jowi.stock.stock.JpaStockRepository;
-import com.jowi.stock.stock.StockContext;
-import com.jowi.stock.stock.StockEntity;
+import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.stock.entities.StockEntity;
+import com.jowi.stock.stock.enums.StockContext;
+import com.jowi.stock.stock.repositories.JpaStockRepository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
