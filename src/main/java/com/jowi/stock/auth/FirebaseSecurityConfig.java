@@ -16,7 +16,7 @@ import jakarta.annotation.PostConstruct;
 @EnableMethodSecurity
 public class FirebaseSecurityConfig {
 
-    @Value("${security.firebase.enabled:true}")
+    @Value("${security.firebase.enabled:false}")
     private boolean firebaseEnabled;
 
     private final CorsConfigurationSource corsConfigurationSource;
@@ -50,28 +50,27 @@ public class FirebaseSecurityConfig {
             FirebaseAuthenticationFilter firebaseAuthenticationFilter,
             DevAdminAuthenticationFilter devAdminAuthenticationFilter) throws Exception {
 
+        http
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
         if (!firebaseEnabled) {
             return http
-                    .csrf(csrf -> csrf.disable())
-                    .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                    .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
                     .addFilterBefore(devAdminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .build();
         }
 
         return http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
-                                "/swagger-ui/**")
+                                "/swagger-ui/**",
+                                "/actuator/**",
+                                "/api/public/**")
                         .permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER")
                         .requestMatchers("/api/dashboard/**").authenticated()
