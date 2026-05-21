@@ -1,6 +1,8 @@
 package com.jowi.stock.auth;
 
 public record AuthMeResponse(
-    String uid,
-    String role
+    String firebaseUid,
+    String email,
+    String role,
+    Boolean enabled
 ) {}

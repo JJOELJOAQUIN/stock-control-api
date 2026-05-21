@@ -16,24 +16,20 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(List.of(
-            "http://localhost:5173",
-            "http://localhost:5174",
-             "https://drapilarmurillo.up.railway.app"
-        ));
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "https://drapilarmurillo.up.railway.app"));
 
         config.setAllowedMethods(List.of(
-            "GET", "POST", "PUT", "DELETE", "OPTIONS"
-        ));
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         config.setAllowedHeaders(List.of(
-            "Authorization",
-            "Content-Type"
-        ));
+                "Authorization",
+                "Content-Type"));
 
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration("/**", config);
 

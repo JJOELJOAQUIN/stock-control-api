@@ -10,18 +10,26 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+  private final AppUserRepository repository;
+
+  public AuthController(AppUserRepository repository) {
+    this.repository = repository;
+  }
+
   @GetMapping("/me")
   public ResponseEntity<AuthMeResponse> me(Authentication authentication) {
+    String firebaseUid = authentication.getName();
 
-    String uid = (String) authentication.getPrincipal();
-    String role = authentication.getAuthorities()
-        .stream()
-        .findFirst()
-        .map(a -> a.getAuthority().replace("ROLE_", ""))
-        .orElse("USER");
+    AppUser user = repository.findByFirebaseUid(firebaseUid)
+        .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
     return ResponseEntity.ok(
-        new AuthMeResponse(uid, role)
+        new AuthMeResponse(
+            user.getFirebaseUid(),
+            user.getEmail(),
+            user.getRole().name(),
+            user.getEnabled()
+        )
     );
   }
 }

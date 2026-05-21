@@ -71,12 +71,12 @@ public class FirebaseSecurityConfig {
                                 "/actuator/**",
                                 "/api/public/**")
                         .permitAll()
+                        .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER")
                         .requestMatchers("/api/dashboard/**").authenticated()
                         .requestMatchers("/api/products/**").authenticated()
                         .requestMatchers("/api/stock/**").authenticated()
-                        .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
