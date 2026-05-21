@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
 @Configuration
 @ConditionalOnProperty(
@@ -19,21 +20,22 @@ import java.nio.charset.StandardCharsets;
 )
 public class FirebaseConfig {
 
-  @Value("${firebase.service-account-json}")
-  private String firebaseServiceAccountJson;
+  @Value("${firebase.service-account-base64}")
+  private String firebaseServiceAccountBase64;
 
   @PostConstruct
   public void init() throws Exception {
-    if (firebaseServiceAccountJson == null || firebaseServiceAccountJson.isBlank()) {
-      throw new IllegalStateException("Firebase service account JSON is missing");
+    if (firebaseServiceAccountBase64 == null || firebaseServiceAccountBase64.isBlank()) {
+      throw new IllegalStateException("Firebase service account base64 is missing");
     }
+
+    byte[] decoded = Base64.getDecoder().decode(firebaseServiceAccountBase64);
+    String json = new String(decoded, StandardCharsets.UTF_8);
 
     FirebaseOptions options = FirebaseOptions.builder()
         .setCredentials(
             GoogleCredentials.fromStream(
-                new ByteArrayInputStream(
-                    firebaseServiceAccountJson.getBytes(StandardCharsets.UTF_8)
-                )
+                new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8))
             )
         )
         .build();
