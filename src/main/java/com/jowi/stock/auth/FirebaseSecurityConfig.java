@@ -76,6 +76,7 @@ public class FirebaseSecurityConfig {
                         .requestMatchers("/api/dashboard/**").authenticated()
                         .requestMatchers("/api/products/**").authenticated()
                         .requestMatchers("/api/stock/**").authenticated()
+                        .requestMatchers("/api/auth/me").authenticated()
                         .anyRequest().authenticated())
                 .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
