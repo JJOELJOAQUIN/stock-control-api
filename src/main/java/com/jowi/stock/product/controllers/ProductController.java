@@ -7,8 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
-
 import com.jowi.stock.product.dto.AssignBarcodeRequest;
 import com.jowi.stock.product.dto.CreateProductRequest;
 import com.jowi.stock.product.dto.PatchProductRequest;
@@ -140,7 +138,10 @@ public class ProductController {
             product.getBarcode(),
             product.getScope().name(),
             stock.getCurrent(),
-            stock.isBelowMinimum()));
+            stock.isBelowMinimum(),
+            product.getCostPrice(),
+            product.getSalePrice(),
+            product.getDefaultMarkupPercentage()));
   }
 
 }

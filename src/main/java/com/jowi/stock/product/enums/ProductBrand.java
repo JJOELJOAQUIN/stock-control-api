@@ -4,9 +4,7 @@ public enum ProductBrand {
   LIDHERMA,
   IDRAET,
   EXEL,
-  SOLENIL,
   BIOBELLUS,
-  MAGISTRALES,
   OXAPHARMA,
   MESOESTETIC,
   GENERICO,
@@ -16,5 +14,14 @@ public enum ProductBrand {
   CARTHAGE,
   FORTBENTON,
   BIOFARMACY,
+  LACROZE,
+  VIP,
+  MAURE,
+  DERMASSI,
+  MAGISTRALES,
+  U_DERM,
+  BEAUTY_NOW,
 
 }
+
+

@@ -17,7 +17,6 @@ import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.repositories.StockRepository;
 
-
 @Service
 @Transactional
 public class ProductServiceImpl implements ProductService {
@@ -51,6 +50,8 @@ public class ProductServiceImpl implements ProductService {
     product.setScope(request.scope());
     product.setBarcode(request.barcode());
     product.setCostPrice(request.costPrice());
+    product.setSalePrice(request.salePrice());
+    product.setDefaultMarkupPercentage(request.defaultMarkupPercentage());
 
     validateProduct(product);
 
@@ -89,6 +90,8 @@ public class ProductServiceImpl implements ProductService {
     p.setExpirable(r.expirable());
     p.setActive(r.active());
     p.setCostPrice(r.costPrice());
+    p.setSalePrice(r.salePrice());
+    p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
 
     validateProduct(p);
 
@@ -99,13 +102,28 @@ public class ProductServiceImpl implements ProductService {
   public Product updatePartial(UUID id, PatchProductRequest r) {
     Product p = getById(id);
 
-    if (r.name() != null) p.setName(r.name());
-    if (r.description() != null) p.setDescription(r.description());
-    if (r.minimumStock() != null) p.setMinimumStock(r.minimumStock());
-    if (r.category() != null) p.setCategory(r.category());
-    if (r.brand() != null) p.setBrand(r.brand());
-    if (r.expirable() != null) p.setExpirable(r.expirable());
-    if (r.active() != null) p.setActive(r.active());
+    if (r.name() != null)
+      p.setName(r.name());
+    if (r.description() != null)
+      p.setDescription(r.description());
+    if (r.minimumStock() != null)
+      p.setMinimumStock(r.minimumStock());
+    if (r.category() != null)
+      p.setCategory(r.category());
+    if (r.brand() != null)
+      p.setBrand(r.brand());
+    if (r.expirable() != null)
+      p.setExpirable(r.expirable());
+    if (r.active() != null)
+      p.setActive(r.active());
+    if (r.costPrice() != null)
+      p.setCostPrice(r.costPrice());
+
+    if (r.salePrice() != null)
+      p.setSalePrice(r.salePrice());
+
+    if (r.defaultMarkupPercentage() != null)
+      p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
 
     validateProduct(p);
 
@@ -158,7 +176,8 @@ public class ProductServiceImpl implements ProductService {
       product.setExpirable(req.expirable() != null ? req.expirable() : true);
       product.setBarcode(req.barcode());
       product.setCostPrice(req.costPrice());
-
+      product.setSalePrice(req.salePrice());
+      product.setDefaultMarkupPercentage(req.defaultMarkupPercentage());
       validateProduct(product);
 
       productRepository.save(product);
@@ -185,39 +204,42 @@ public class ProductServiceImpl implements ProductService {
     productRepository.save(product);
   }
 
-@Override
-public List<ProductWithStockResponse> getAllWithStock(StockContext context) {
-  return productRepository.findAll().stream()
-      .filter(Product::getActive)
-      .filter(product ->
-          product.getScope() == ProductScope.BOTH ||
-          product.getScope().name().equals(context.name()))
-      .map(product -> {
-        int currentStock = 0;
-        boolean belowMinimum = true;
+  @Override
+  public List<ProductWithStockResponse> getAllWithStock(StockContext context) {
+    return productRepository.findAll().stream()
+        .filter(Product::getActive)
+        .filter(product -> product.getScope() == ProductScope.BOTH ||
+            product.getScope().name().equals(context.name()))
+        .map(product -> {
+          int currentStock = 0;
+          boolean belowMinimum = true;
 
-        var stockOpt = stockRepository.findByProductIdAndContext(product.getId(), context);
+          var stockOpt = stockRepository.findByProductIdAndContext(product.getId(), context);
 
-        if (stockOpt.isPresent()) {
-          var stock = stockOpt.get();
-          currentStock = stock.getCurrent();
-          belowMinimum = stock.isBelowMinimum();
-        }
+          if (stockOpt.isPresent()) {
+            var stock = stockOpt.get();
+            currentStock = stock.getCurrent();
+            belowMinimum = stock.isBelowMinimum();
+          }
 
-        return new ProductWithStockResponse(
-            product.getId(),
-            product.getName(),
-            product.getBarcode(),
-            product.getBrand().name(),
-            product.getCategory().name(),
-            product.getScope().name(),
-            product.getMinimumStock(),
-            currentStock,
-            belowMinimum,
-            product.getActive(),
-            product.getCostPrice()
+          return new ProductWithStockResponse(
+              product.getId(),
+              product.getName(),
+              product.getBarcode(),
+              product.getBrand().name(),
+              product.getCategory().name(),
+              product.getScope().name(),
+              product.getMinimumStock(),
+              currentStock,
+              belowMinimum,
+              product.getActive(),
+              product.getCostPrice(),
+
+              product.getSalePrice(),
+              product.getDefaultMarkupPercentage()
+
         );
-      })
-      .toList();
-}
+        })
+        .toList();
+  }
 }

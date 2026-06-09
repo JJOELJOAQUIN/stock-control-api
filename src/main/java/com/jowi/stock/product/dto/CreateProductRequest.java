@@ -11,13 +11,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record CreateProductRequest(
-    @NotBlank String name,
-    String description,
-    @NotNull @Min(0) Integer minimumStock,
-    @NotNull ProductCategory category,
-    @NotNull ProductBrand brand,
-    Boolean expirable,
-    @NotNull ProductScope scope,
-    String barcode,
-   @NotNull BigDecimal costPrice
-) {}
+        @NotBlank String name,
+        String description,
+        @NotNull @Min(0) Integer minimumStock,
+        @NotNull ProductCategory category,
+        @NotNull ProductBrand brand,
+        Boolean expirable,
+        @NotNull ProductScope scope,
+        String barcode,
+        @NotNull BigDecimal costPrice,
+        BigDecimal salePrice,
+        BigDecimal defaultMarkupPercentage) {
+}

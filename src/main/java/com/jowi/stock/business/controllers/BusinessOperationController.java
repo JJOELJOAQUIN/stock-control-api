@@ -42,7 +42,12 @@ public class BusinessOperationController {
         req.context(),
         req.comment(),
         req.expirationDate(),
-        req.lotNumber());
+        req.lotNumber(),
+        req.updateCostPrice(),
+        req.updateSalePrice(),
+        req.newSalePrice(),
+        req.updateMarkupPercentage(),
+        req.newDefaultMarkupPercentage());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }

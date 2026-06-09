@@ -21,7 +21,7 @@ spring:
 
 security:
   firebase:
-    enabled: ${SECURITY_FIREBASE_ENABLED:false}
+    enabled: ${SECURITY_FIREBASE_ENABLED:true}
 
 firebase:
-  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_BASE64:}
+    service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_BASE64:}

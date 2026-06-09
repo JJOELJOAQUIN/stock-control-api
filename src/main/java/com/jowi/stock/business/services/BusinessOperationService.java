@@ -2,9 +2,7 @@ package com.jowi.stock.business.services;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-
 import org.springframework.stereotype.Service;
-
 import com.jowi.stock.batch.services.ProductBatchService;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.enums.CashActor;
@@ -16,7 +14,6 @@ import com.jowi.stock.cash.services.CashMovementService;
 import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.services.StockService;
-
 import java.time.LocalDate;
 import jakarta.transaction.Transactional;
 
@@ -74,9 +71,16 @@ public class BusinessOperationService {
       CashContext context,
       String comment,
       LocalDate expirationDate,
-      String lotNumber) {
+      String lotNumber,
+      Boolean updateCostPrice,
+      Boolean updateSalePrice,
+      BigDecimal newSalePrice,
+      Boolean updateMarkupPercentage,
+      BigDecimal newDefaultMarkupPercentage) {
 
     StockContext stockContext = context.toStockContext();
+
+    var product = productService.getById(productId);
 
     if (!stockService.exists(productId, stockContext)) {
       stockService.initStock(productId, stockContext, 0);
@@ -90,7 +94,28 @@ public class BusinessOperationService {
         quantity,
         expirationDate,
         lotNumber);
-        
+
+    BigDecimal unitCost = amount.divide(
+        BigDecimal.valueOf(quantity),
+        2,
+        java.math.RoundingMode.HALF_UP);
+
+    if (Boolean.TRUE.equals(updateCostPrice)) {
+      product.setCostPrice(unitCost);
+    }
+
+    if (Boolean.TRUE.equals(updateSalePrice) && newSalePrice != null) {
+      product.setSalePrice(newSalePrice);
+    }
+
+    if (Boolean.TRUE.equals(updateMarkupPercentage)) {
+      if (newDefaultMarkupPercentage == null) {
+        throw new IllegalArgumentException("newDefaultMarkupPercentage is required");
+      }
+
+      product.setDefaultMarkupPercentage(newDefaultMarkupPercentage);
+    }
+
     cashService.create(
         new CreateCashMovementRequest(
             CashMovementType.OUT,

@@ -1,5 +1,7 @@
 package com.jowi.stock.auth;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,5 +41,10 @@ public class AppUserService {
 
         user.setRole(newRole);
         firebaseRoleService.setRole(firebaseUid, newRole);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppUser> findAll() {
+        return repository.findAll();
     }
 }

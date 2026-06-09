@@ -36,20 +36,7 @@ public class FirebaseSecurityConfig {
     }
 
     @Bean
-    public FirebaseAuthenticationFilter firebaseAuthenticationFilter() {
-        return new FirebaseAuthenticationFilter(appUserService);
-    }
-
-    @Bean
-    public DevAdminAuthenticationFilter devAdminAuthenticationFilter() {
-        return new DevAdminAuthenticationFilter();
-    }
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            FirebaseAuthenticationFilter firebaseAuthenticationFilter,
-            DevAdminAuthenticationFilter devAdminAuthenticationFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
@@ -59,7 +46,7 @@ public class FirebaseSecurityConfig {
         if (!firebaseEnabled) {
             return http
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .addFilterBefore(devAdminAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                    .addFilterBefore(new DevAdminAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                     .build();
         }
 
@@ -75,12 +62,13 @@ public class FirebaseSecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER")
-                        .requestMatchers("/api/dashboard/**").authenticated()
-                        .requestMatchers("/api/products/**").authenticated()
-                        .requestMatchers("/api/stock/**").authenticated()
+                        .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
+                        .requestMatchers("/api/products/**").hasRole("ADMIN")
+                        .requestMatchers("/api/stock/**").hasAnyRole("ADMIN", "COSMETOLOGA")
                         .anyRequest().authenticated())
-                .addFilterBefore(firebaseAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new FirebaseAuthenticationFilter(appUserService),
+                        UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

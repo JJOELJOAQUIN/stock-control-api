@@ -57,6 +57,28 @@ public class Product extends BaseEntity {
   @Column(precision = 15, scale = 2)
   private BigDecimal costPrice;
 
+  @Column(name = "sale_price", precision = 15, scale = 2)
+  private BigDecimal salePrice;
+
+  @Column(name = "default_markup_percentage", precision = 5, scale = 2)
+  private BigDecimal defaultMarkupPercentage;
+
+  public BigDecimal getSalePrice() {
+    return salePrice;
+  }
+
+  public void setSalePrice(BigDecimal salePrice) {
+    this.salePrice = salePrice;
+  }
+
+  public BigDecimal getDefaultMarkupPercentage() {
+    return defaultMarkupPercentage;
+  }
+
+  public void setDefaultMarkupPercentage(BigDecimal defaultMarkupPercentage) {
+    this.defaultMarkupPercentage = defaultMarkupPercentage;
+  }
+
   public BigDecimal getCostPrice() {
     return costPrice;
   }

@@ -11,15 +11,22 @@ import com.jowi.stock.cash.enums.CashContext;
 
 public record PurchaseProductRequest(
 
-        @NotNull UUID productId,
+                @NotNull UUID productId,
 
-        @Positive int quantity,
+                @Positive int quantity,
 
-        @NotNull BigDecimal amount,
+                @NotNull BigDecimal amount,
 
-        CashContext context,
+                CashContext context,
 
-        String comment,
-        LocalDate expirationDate,
-        String lotNumber) {
+                String comment,
+                LocalDate expirationDate,
+                String lotNumber,
+                Boolean updateCostPrice,
+
+                Boolean updateSalePrice,
+
+                BigDecimal newSalePrice,
+                Boolean updateMarkupPercentage,
+                BigDecimal newDefaultMarkupPercentage) {
 }
