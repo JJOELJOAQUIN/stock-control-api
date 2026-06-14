@@ -21,7 +21,7 @@ public enum ProductBrand {
   MAGISTRALES,
   U_DERM,
   BEAUTY_NOW,
-  MIRA_DROR
+  MIRADROR
 
 }
 
