@@ -5,7 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.jowi.stock.business.dto.PurchaseProductRequest;
+import com.jowi.stock.business.dto.PurchaseOrderRequest;
 import com.jowi.stock.business.dto.SellByBarcodeRequest;
 import com.jowi.stock.business.dto.SellProductRequest;
 import com.jowi.stock.business.services.BusinessOperationService;
@@ -34,20 +34,13 @@ public class BusinessOperationController {
   }
 
   @PostMapping("/purchase")
-  public ResponseEntity<Void> purchase(@Valid @RequestBody PurchaseProductRequest req) {
-    service.purchaseProduct(
-        req.productId(),
-        req.quantity(),
-        req.amount(),
+  public ResponseEntity<Void> purchase(@Valid @RequestBody PurchaseOrderRequest req) {
+    service.purchaseOrder(
         req.context(),
         req.comment(),
-        req.expirationDate(),
-        req.lotNumber(),
-        req.updateCostPrice(),
-        req.updateSalePrice(),
-        req.newSalePrice(),
-        req.updateMarkupPercentage(),
-        req.newDefaultMarkupPercentage());
+        req.paymentMethod(),
+        req.expectedTotal(),
+        req.items());
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }

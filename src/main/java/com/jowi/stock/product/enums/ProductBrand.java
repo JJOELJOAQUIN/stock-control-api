@@ -18,11 +18,9 @@ public enum ProductBrand {
   VIP,
   MAURE,
   DERMASSI,
-  MAGISTRALES,
   U_DERM,
   BEAUTY_NOW,
-  MIRADROR
-
+  MIRADROR,
+  UVANZA,
+  EXODERMAL
 }
-
-
