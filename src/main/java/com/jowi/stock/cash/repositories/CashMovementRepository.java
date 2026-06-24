@@ -148,4 +148,14 @@ public interface CashMovementRepository extends JpaRepository<CashMovement, UUID
       @Param("from") java.time.Instant from,
       @Param("to") java.time.Instant to);
 
+      @Query("""
+        SELECT
+          COALESCE(SUM(CASE WHEN c.source = 'PRODUCT_SALE' THEN c.amount ELSE 0 END), 0),
+          COALESCE(SUM(CASE WHEN c.source = 'PROCEDURE'    THEN c.amount ELSE 0 END), 0)
+        FROM CashMovement c
+        WHERE c.type = 'IN'
+          AND c.context = :context
+      """)
+  Object[] salesTotalsByContext(@Param("context") CashContext context);
+
 }

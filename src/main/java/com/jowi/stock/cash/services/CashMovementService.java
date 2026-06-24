@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
+import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashActor;
@@ -171,6 +172,21 @@ public class CashMovementService {
         (BigDecimal) row[0],
         (BigDecimal) row[1],
         (BigDecimal) row[2]);
+  }
+
+
+  public CashSalesTotalsResponse salesTotals(CashContext context) {
+    if (context == null) {
+      throw new IllegalArgumentException("context is required");
+    }
+
+    Object[] result = repository.salesTotalsByContext(context);
+    Object[] row = (Object[]) result[0];
+
+    return new CashSalesTotalsResponse(
+        context,
+        (BigDecimal) row[0],
+        (BigDecimal) row[1]);
   }
 
   private BigDecimal resolveRetentionPercent(

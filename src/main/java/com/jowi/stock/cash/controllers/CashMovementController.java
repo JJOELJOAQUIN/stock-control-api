@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
 import com.jowi.stock.cash.dto.CashMovementResponse;
+import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashContext;
@@ -46,5 +47,11 @@ public class CashMovementController {
       @RequestParam CashContext context,
       @RequestParam(required = false) java.time.LocalDate date) {
     return ResponseEntity.ok(service.dailySplit(context, date));
+  }
+
+  @GetMapping("/sales-totals")
+  public ResponseEntity<CashSalesTotalsResponse> salesTotals(
+      @RequestParam CashContext context) {
+    return ResponseEntity.ok(service.salesTotals(context));
   }
 }
