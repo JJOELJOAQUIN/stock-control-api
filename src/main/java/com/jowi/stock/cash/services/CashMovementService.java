@@ -13,6 +13,7 @@ import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashActor;
 import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
@@ -134,6 +135,77 @@ public class CashMovementService {
     return repository.save(m);
   }
 
+  /**
+   * Crea un movimiento de caja con los shares (doctor/cosmetóloga) dados en
+   * MONTO, no en porcentaje. Útil cuando el reparto es fijo (ej: la
+   * cosmetóloga cobra $40.000 netos garantizados, sin importar la retención).
+   *
+   * La retención y el neto se calculan igual que en {@link #create}. Los
+   * shares se aplican sobre el neto y deben sumar exactamente el neto.
+   */
+  public CashMovement createWithFixedShares(
+      CashMovementType type,
+      CashSource source,
+      PaymentMethod paymentMethod,
+      CashContext context,
+      BigDecimal amount,
+      BigDecimal retentionPercentOverride,
+      String comment,
+      java.util.UUID referenceId,
+      BigDecimal doctorShareAmount,
+      BigDecimal cosmetologistShareAmount) {
+
+    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("amount must be > 0");
+    }
+    if (type == null)
+      throw new IllegalArgumentException("type is required");
+    if (source == null)
+      throw new IllegalArgumentException("source is required");
+    if (paymentMethod == null)
+      throw new IllegalArgumentException("paymentMethod is required");
+    if (context == null)
+      throw new IllegalArgumentException("context is required");
+    if (doctorShareAmount == null || cosmetologistShareAmount == null) {
+      throw new IllegalArgumentException("share amounts are required");
+    }
+    if (doctorShareAmount.signum() < 0 || cosmetologistShareAmount.signum() < 0) {
+      throw new IllegalArgumentException("share amounts must be >= 0");
+    }
+
+    BigDecimal percent = resolveRetentionPercent(paymentMethod, retentionPercentOverride);
+
+    BigDecimal grossAmount = amount.setScale(2, RoundingMode.HALF_UP);
+    BigDecimal retention = grossAmount
+        .multiply(percent)
+        .setScale(2, RoundingMode.HALF_UP);
+    BigDecimal net = grossAmount.subtract(retention).setScale(2, RoundingMode.HALF_UP);
+
+    BigDecimal doctorShare = doctorShareAmount.setScale(2, RoundingMode.HALF_UP);
+    BigDecimal cosmetologistShare = cosmetologistShareAmount.setScale(2, RoundingMode.HALF_UP);
+
+    // Los shares en monto deben repartir exactamente el neto.
+    if (doctorShare.add(cosmetologistShare).compareTo(net) != 0) {
+      throw new IllegalArgumentException(
+          "doctorShareAmount + cosmetologistShareAmount must equal the net amount");
+    }
+
+    CashMovement m = new CashMovement();
+    m.setType(type);
+    m.setSource(source);
+    m.setPaymentMethod(paymentMethod);
+    m.setContext(context);
+    m.setAmount(grossAmount);
+    m.setRetention(retention);
+    m.setNetAmount(net);
+    m.setComment(comment);
+    m.setReferenceId(referenceId);
+    m.setDoctorShare(doctorShare);
+    m.setCosmetologistShare(cosmetologistShare);
+
+    return repository.save(m);
+  }
+
   public Page<CashMovement> list(Pageable pageable) {
     return repository.findAll(pageable);
   }
@@ -173,7 +245,6 @@ public class CashMovementService {
         (BigDecimal) row[1],
         (BigDecimal) row[2]);
   }
-
 
   public CashSalesTotalsResponse salesTotals(CashContext context) {
     if (context == null) {

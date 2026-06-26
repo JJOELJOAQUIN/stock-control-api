@@ -62,9 +62,20 @@ public class FirebaseSecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
-                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
+
+                        // Lectura de productos (catálogo, with-stock, scan): ADMIN + COSMETOLOGA.
+                        .requestMatchers(HttpMethod.GET, "/api/products/**")
+                        .hasAnyRole("ADMIN", "COSMETOLOGA")
+                        // Alta / edición / baja de productos: solo ADMIN.
                         .requestMatchers("/api/products/**").hasRole("ADMIN")
+
+                        // Compra de productos: fuera del alcance de COSMETOLOGA (igual que en el front).
+                        .requestMatchers(HttpMethod.POST, "/api/business/purchase")
+                        .hasAnyRole("ADMIN", "USER")
+                        // Resto de operaciones de negocio (venta por código de barras, etc.).
+                        .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
+
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
                         .requestMatchers("/api/stock/**").hasAnyRole("ADMIN", "COSMETOLOGA")
                         .anyRequest().authenticated())
                 .addFilterBefore(new FirebaseAuthenticationFilter(appUserService),
