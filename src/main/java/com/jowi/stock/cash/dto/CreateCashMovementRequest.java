@@ -17,6 +17,7 @@ public record CreateCashMovementRequest(
                 BigDecimal amount,
                 BigDecimal retentionPercent,
                 String comment,
+                String detail,
                 UUID referenceId,
                 BigDecimal doctorSharePercent,
                 BigDecimal cosmetologistSharePercent,

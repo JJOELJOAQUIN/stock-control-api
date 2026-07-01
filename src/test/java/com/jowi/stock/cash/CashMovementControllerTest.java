@@ -53,13 +53,13 @@ class CashMovementControllerTest {
                 PaymentMethod.CASH,
                 CashContext.LOCAL,
                 new BigDecimal("1000.00"),
-                null,
-                "venta mostrador",
-                UUID.randomUUID(),
-                null,
-                null,
-                CashActor.MEDICA
-                                                        );
+                null,                  // retentionPercent
+                "venta mostrador",     // comment
+                "Producto X",          // detail
+                UUID.randomUUID(),     // referenceId
+                null,                  // doctorSharePercent
+                null,                  // cosmetologistSharePercent
+                CashActor.MEDICA);     // performedBy
 
         CashMovement created = new CashMovement();
         created.setType(req.type());
@@ -70,6 +70,7 @@ class CashMovementControllerTest {
         created.setRetention(BigDecimal.ZERO);
         created.setNetAmount(req.amount());
         created.setComment(req.comment());
+        created.setDetail(req.detail());
         created.setReferenceId(req.referenceId());
 
         when(service.create(any(CreateCashMovementRequest.class)))
@@ -81,7 +82,8 @@ class CashMovementControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.type").value("IN"))
                 .andExpect(jsonPath("$.source").value("PRODUCT_SALE"))
-                .andExpect(jsonPath("$.amount").value(1000.00));
+                .andExpect(jsonPath("$.amount").value(1000.00))
+                .andExpect(jsonPath("$.detail").value("Producto X"));
     }
 
     @Test
@@ -91,7 +93,8 @@ class CashMovementControllerTest {
 
         Page<CashMovement> page = new PageImpl<>(List.of(), pageable, 0);
 
-        when(service.list(any(Pageable.class)))
+        // El controller ahora delega en search(...) con todos los filtros opcionales.
+        when(service.search(any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(page);
 
         mvc.perform(get("/api/cash-movements")
@@ -108,11 +111,37 @@ class CashMovementControllerTest {
 
         Page<CashMovement> page = new PageImpl<>(List.of(), pageable, 0);
 
-        when(service.listByContext(eq(CashContext.LOCAL), any(Pageable.class)))
+        when(service.search(eq(CashContext.LOCAL), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(page);
 
         mvc.perform(get("/api/cash-movements")
                 .param("context", "LOCAL")
+                .param("page", "0")
+                .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void list_withFilters_ok() throws Exception {
+
+        Pageable pageable = PageRequest.of(0, 10);
+
+        Page<CashMovement> page = new PageImpl<>(List.of(), pageable, 0);
+
+        when(service.search(
+                eq(CashContext.CONSULTORIO),
+                eq(CashMovementType.IN),
+                eq(CashSource.PROCEDURE),
+                any(), any(), eq("peeling"),
+                any(Pageable.class)))
+                .thenReturn(page);
+
+        mvc.perform(get("/api/cash-movements")
+                .param("context", "CONSULTORIO")
+                .param("type", "IN")
+                .param("source", "PROCEDURE")
+                .param("q", "peeling")
                 .param("page", "0")
                 .param("size", "10"))
                 .andExpect(status().isOk())

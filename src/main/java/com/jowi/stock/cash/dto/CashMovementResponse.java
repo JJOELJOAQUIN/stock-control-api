@@ -23,6 +23,7 @@ public record CashMovementResponse(
     BigDecimal doctorShare,
     BigDecimal cosmetologistShare,
     String comment,
+    String detail,
     UUID referenceId,
     Instant createdAt) {
   public static CashMovementResponse from(CashMovement m) {
@@ -38,6 +39,7 @@ public record CashMovementResponse(
         m.getDoctorShare(),
         m.getCosmetologistShare(),
         m.getComment(),
+        m.getDetail(),
         m.getReferenceId(),
         m.getCreatedAt());
   }

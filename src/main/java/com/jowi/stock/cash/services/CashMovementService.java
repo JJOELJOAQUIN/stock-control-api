@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
@@ -18,6 +19,7 @@ import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
+import com.jowi.stock.cash.specifications.CashMovementSpecifications;
 
 @Service
 @Transactional
@@ -73,6 +75,7 @@ public class CashMovementService {
     m.setRetention(retention);
     m.setNetAmount(net);
     m.setComment(req.comment());
+    m.setDetail(req.detail());
     m.setReferenceId(req.referenceId());
 
     if (req.source() == CashSource.PROCEDURE &&
@@ -216,6 +219,42 @@ public class CashMovementService {
       throw new IllegalArgumentException("context is required");
 
     return repository.findByContext(context, pageable);
+  }
+
+  /**
+   * Búsqueda paginada con filtros opcionales (todos pueden ser null).
+   * Los filtros nulos se ignoran (ver {@link CashMovementSpecifications}).
+   * El rango de fechas es inclusivo en {@code dateFrom} y en {@code dateTo}
+   * (se toma hasta el final de ese día).
+   */
+  public Page<CashMovement> search(
+      CashContext context,
+      CashMovementType type,
+      CashSource source,
+      java.time.LocalDate dateFrom,
+      java.time.LocalDate dateTo,
+      String q,
+      Pageable pageable) {
+
+    java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+
+    java.time.Instant from = dateFrom == null
+        ? null
+        : dateFrom.atStartOfDay(zone).toInstant();
+
+    java.time.Instant to = dateTo == null
+        ? null
+        : dateTo.plusDays(1).atStartOfDay(zone).toInstant();
+
+    Specification<CashMovement> spec = Specification
+        .where(CashMovementSpecifications.hasContext(context))
+        .and(CashMovementSpecifications.hasType(type))
+        .and(CashMovementSpecifications.hasSource(source))
+        .and(CashMovementSpecifications.createdFrom(from))
+        .and(CashMovementSpecifications.createdBefore(to))
+        .and(CashMovementSpecifications.textContains(q));
+
+    return repository.findAll(spec, pageable);
   }
 
   public CashDailySplitResponse dailySplit(

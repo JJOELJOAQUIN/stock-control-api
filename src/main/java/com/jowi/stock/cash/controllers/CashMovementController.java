@@ -14,6 +14,8 @@ import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashContext;
+import com.jowi.stock.cash.enums.CashMovementType;
+import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.services.CashMovementService;
 
 @RestController
@@ -35,10 +37,13 @@ public class CashMovementController {
   @GetMapping
   public ResponseEntity<Page<CashMovementResponse>> list(
       @RequestParam(required = false) CashContext context,
+      @RequestParam(required = false) CashMovementType type,
+      @RequestParam(required = false) CashSource source,
+      @RequestParam(required = false) java.time.LocalDate dateFrom,
+      @RequestParam(required = false) java.time.LocalDate dateTo,
+      @RequestParam(required = false) String q,
       Pageable pageable) {
-    Page<CashMovement> page = (context == null)
-        ? service.list(pageable)
-        : service.listByContext(context, pageable);
+    Page<CashMovement> page = service.search(context, type, source, dateFrom, dateTo, q, pageable);
 
     return ResponseEntity.ok(page.map(CashMovementResponse::from));
   }

@@ -52,6 +52,9 @@ public class CashMovement extends BaseEntity {
   @Column(length = 300)
   private String comment;
 
+  @Column(length = 200)
+  private String detail;
+
   // Relación "lógica" a algo (saleId, expenseId, etc). Opcional.
   @Column(name = "reference_id")
   private java.util.UUID referenceId;
@@ -126,6 +129,14 @@ public class CashMovement extends BaseEntity {
 
   public void setComment(String comment) {
     this.comment = comment;
+  }
+
+  public String getDetail() {
+    return detail;
+  }
+
+  public void setDetail(String detail) {
+    this.detail = detail;
   }
 
   public java.util.UUID getReferenceId() {

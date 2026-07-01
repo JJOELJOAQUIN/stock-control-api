@@ -46,7 +46,7 @@ public class BusinessOperationService {
       CashContext context,
       String comment) {
 
-    productService.getById(productId);
+    var product = productService.getById(productId);
 
     stockService.decrease(productId, context.toStockContext(), quantity);
 
@@ -59,6 +59,7 @@ public class BusinessOperationService {
             amount,
             null,
             comment,
+            product.getName(),
             productId,
             null,
             null,
@@ -119,6 +120,7 @@ public class BusinessOperationService {
             computedTotal,
             BigDecimal.ZERO,
             comment,
+            null,
             null,
             null,
             null,
@@ -209,6 +211,7 @@ public class BusinessOperationService {
             amount,
             null,
             comment,
+            product.getName(),
             product.getId(),
             null,
             null,
