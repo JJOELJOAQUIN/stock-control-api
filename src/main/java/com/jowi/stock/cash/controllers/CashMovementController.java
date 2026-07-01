@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
+import com.jowi.stock.cash.dto.CashCosmetologistSplitResponse;
 import com.jowi.stock.cash.dto.CashMovementResponse;
 import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
@@ -47,6 +48,13 @@ public class CashMovementController {
       @RequestParam CashContext context,
       @RequestParam(required = false) java.time.LocalDate date) {
     return ResponseEntity.ok(service.dailySplit(context, date));
+  }
+
+  @GetMapping("/daily-split/cosmetologist")
+  public ResponseEntity<CashCosmetologistSplitResponse> cosmetologistDailySplit(
+      @RequestParam CashContext context,
+      @RequestParam(required = false) java.time.LocalDate date) {
+    return ResponseEntity.ok(service.cosmetologistDailySplit(context, date));
   }
 
   @GetMapping("/sales-totals")

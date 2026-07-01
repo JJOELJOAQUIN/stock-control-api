@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
+import com.jowi.stock.cash.dto.CashCosmetologistSplitResponse;
 import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
@@ -244,6 +245,36 @@ public class CashMovementService {
         (BigDecimal) row[0],
         (BigDecimal) row[1],
         (BigDecimal) row[2]);
+  }
+
+  public CashCosmetologistSplitResponse cosmetologistDailySplit(
+      CashContext context,
+      java.time.LocalDate date) {
+
+    if (context == null) {
+      throw new IllegalArgumentException("context is required");
+    }
+
+    if (date == null) {
+      date = java.time.LocalDate.now();
+    }
+
+    java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+
+    java.time.Instant from = date.atStartOfDay(zone).toInstant();
+    java.time.Instant to = date.plusDays(1).atStartOfDay(zone).toInstant();
+
+    Object[] result = repository.cosmetologistProductionSplit(context, from, to);
+
+    Object[] row = (Object[]) result[0];
+
+    return new CashCosmetologistSplitResponse(
+        date,
+        context,
+        (BigDecimal) row[0],
+        (BigDecimal) row[1],
+        (BigDecimal) row[2],
+        (BigDecimal) row[3]);
   }
 
   public CashSalesTotalsResponse salesTotals(CashContext context) {
