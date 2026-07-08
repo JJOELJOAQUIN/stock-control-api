@@ -28,7 +28,7 @@ public class DevAdminAuthenticationFilter extends OncePerRequestFilter {
             );
 
             var authentication = new UsernamePasswordAuthenticationToken(
-                    "dev-admin",
+                    "admin@local.dev",
                     null,
                     authorities
             );

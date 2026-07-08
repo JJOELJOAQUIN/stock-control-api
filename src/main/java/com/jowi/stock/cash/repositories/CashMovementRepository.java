@@ -150,6 +150,41 @@ public interface CashMovementRepository
       @Param("from") java.time.Instant from,
       @Param("to") java.time.Instant to);
 
+  // ===================================================================
+  // Split de producción de la cosmetóloga (procedimiento + producto).
+  // Dos ramas mutuamente excluyentes que luego se suman en el service:
+  //   - FromItems: movimientos CON ítems (venta combinada y, tras Fase 2,
+  //     también ventas simples y procedimientos). Split exacto por kind.
+  //   - Legacy: movimientos SIN ítems (registros viejos que aún guardan el
+  //     split sólo en la cabecera). Se agregan por source como antes.
+  // ===================================================================
+
+  @Query("""
+        SELECT
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE
+              THEN i.cosmetologistShare ELSE 0 END), 0),
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE
+              THEN i.doctorShare ELSE 0 END), 0),
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+              THEN i.cosmetologistShare ELSE 0 END), 0),
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+              THEN i.doctorShare ELSE 0 END), 0)
+        FROM CashMovement c
+        JOIN c.items i
+        WHERE c.type = 'IN'
+          AND c.context = :context
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
+      """)
+  Object[] cosmetologistProductionSplitFromItems(
+      @Param("context") CashContext context,
+      @Param("from") java.time.Instant from,
+      @Param("to") java.time.Instant to);
+
   @Query("""
         SELECT
           COALESCE(SUM(CASE WHEN c.source = 'PROCEDURE'    THEN c.cosmetologistShare ELSE 0 END), 0),
@@ -160,22 +195,42 @@ public interface CashMovementRepository
         WHERE c.type = 'IN'
           AND c.context = :context
           AND c.cosmetologistShare > 0
+          AND c.items IS EMPTY
           AND c.createdAt >= :from
           AND c.createdAt < :to
       """)
-  Object[] cosmetologistProductionSplit(
+  Object[] cosmetologistProductionSplitLegacy(
       @Param("context") CashContext context,
       @Param("from") java.time.Instant from,
       @Param("to") java.time.Instant to);
 
-      @Query("""
+  // ===================================================================
+  // Totales de venta (producto / procedimiento). Mismo esquema híbrido.
+  // ===================================================================
+
+  @Query("""
+        SELECT
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+              THEN i.subtotal ELSE 0 END), 0),
+          COALESCE(SUM(CASE
+            WHEN i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE
+              THEN i.subtotal ELSE 0 END), 0)
+        FROM CashMovement c
+        JOIN c.items i
+        WHERE c.type = 'IN'
+          AND c.context = :context
+      """)
+  Object[] salesTotalsFromItems(@Param("context") CashContext context);
+
+  @Query("""
         SELECT
           COALESCE(SUM(CASE WHEN c.source = 'PRODUCT_SALE' THEN c.amount ELSE 0 END), 0),
           COALESCE(SUM(CASE WHEN c.source = 'PROCEDURE'    THEN c.amount ELSE 0 END), 0)
         FROM CashMovement c
         WHERE c.type = 'IN'
           AND c.context = :context
+          AND c.items IS EMPTY
       """)
-  Object[] salesTotalsByContext(@Param("context") CashContext context);
-
+  Object[] salesTotalsLegacy(@Param("context") CashContext context);
 }

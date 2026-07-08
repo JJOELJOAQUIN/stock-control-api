@@ -1,153 +1,88 @@
 package com.jowi.stock.treatment.entities;
 
+import com.jowi.stock.common.BaseEntity;
+import com.jowi.stock.patient.entities.Patient;
+import com.jowi.stock.treatment.enums.TreatmentStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.jowi.stock.cash.enums.CashContext;
-import com.jowi.stock.common.BaseEntity;
-import com.jowi.stock.patient.entities.Patient;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Index;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
-
-/**
- * Tratamiento registrado (instancia). No confundir con el catálogo de
- * procedimientos del front: esto es "a tal paciente se le hizo tal
- * procedimiento, cuesta tanto, y se paga en uno o varios pagos".
- *
- * El saldo y el estado se calculan a partir de los pagos; no se persisten
- * como columnas para evitar desincronización.
- */
 @Entity
 @Table(name = "treatments", indexes = {
     @Index(name = "idx_treatment_patient", columnList = "patient_id"),
-    @Index(name = "idx_treatment_context", columnList = "context")
+    @Index(name = "idx_treatment_status", columnList = "status")
 })
 public class Treatment extends BaseEntity {
 
-  // Identificación del procedimiento (del catálogo del front).
   @NotNull
-  @Column(name = "procedure_code", nullable = false, length = 80)
-  private String procedureCode;
-
-  @Column(name = "procedure_label", length = 160)
-  private String procedureLabel;
-
-  // Paciente: opcional a nivel de modelo; la obligatoriedad para peeling
-  // se valida en el service.
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "patient_id")
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @JoinColumn(name = "patient_id", nullable = false)
   private Patient patient;
 
+  // Código del protocolo (ej. el del peeling). Genérico para otros a futuro.
   @NotNull
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
-  private CashContext context;
+  @Column(nullable = false, length = 60)
+  private String code;
+
+  @Column(length = 200)
+  private String description;
 
   @NotNull
   @Column(name = "total_amount", nullable = false, precision = 18, scale = 2)
   private BigDecimal totalAmount;
 
-  // Reparto fijo de la cosmetóloga para este tratamiento (ej: peeling $40.000).
-  // Si es null, el reparto sigue las reglas por defecto del procedimiento.
+  @NotNull
+  @Column(name = "paid_amount", nullable = false, precision = 18, scale = 2)
+  private BigDecimal paidAmount = BigDecimal.ZERO;
+
+  // Monto fijo que le corresponde a la cosmetóloga (se aplica en el 1er pago).
   @Column(name = "cosmetologist_fixed_share", precision = 18, scale = 2)
   private BigDecimal cosmetologistFixedShare;
 
-  @Column(length = 500)
-  private String comment;
+  // Tope de cuotas (2 para peeling). Genérico.
+  @NotNull
+  @Column(name = "max_installments", nullable = false)
+  private Integer maxInstallments;
+
+  @NotNull
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  private TreatmentStatus status = TreatmentStatus.PENDIENTE;
 
   @OneToMany(mappedBy = "treatment", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<TreatmentPayment> payments = new ArrayList<>();
+  private List<Payment> payments = new ArrayList<>();
 
-  // ===== getters/setters =====
-
-  public String getProcedureCode() {
-    return procedureCode;
+  public void addPayment(Payment p) {
+    p.setTreatment(this);
+    this.payments.add(p);
   }
 
-  public void setProcedureCode(String procedureCode) {
-    this.procedureCode = procedureCode;
-  }
+  public Patient getPatient() { return patient; }
+  public void setPatient(Patient patient) { this.patient = patient; }
 
-  public String getProcedureLabel() {
-    return procedureLabel;
-  }
+  public String getCode() { return code; }
+  public void setCode(String code) { this.code = code; }
 
-  public void setProcedureLabel(String procedureLabel) {
-    this.procedureLabel = procedureLabel;
-  }
+  public String getDescription() { return description; }
+  public void setDescription(String description) { this.description = description; }
 
-  public Patient getPatient() {
-    return patient;
-  }
+  public BigDecimal getTotalAmount() { return totalAmount; }
+  public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
 
-  public void setPatient(Patient patient) {
-    this.patient = patient;
-  }
+  public BigDecimal getPaidAmount() { return paidAmount; }
+  public void setPaidAmount(BigDecimal paidAmount) { this.paidAmount = paidAmount; }
 
-  public CashContext getContext() {
-    return context;
-  }
+  public BigDecimal getCosmetologistFixedShare() { return cosmetologistFixedShare; }
+  public void setCosmetologistFixedShare(BigDecimal v) { this.cosmetologistFixedShare = v; }
 
-  public void setContext(CashContext context) {
-    this.context = context;
-  }
+  public Integer getMaxInstallments() { return maxInstallments; }
+  public void setMaxInstallments(Integer maxInstallments) { this.maxInstallments = maxInstallments; }
 
-  public BigDecimal getTotalAmount() {
-    return totalAmount;
-  }
+  public TreatmentStatus getStatus() { return status; }
+  public void setStatus(TreatmentStatus status) { this.status = status; }
 
-  public void setTotalAmount(BigDecimal totalAmount) {
-    this.totalAmount = totalAmount;
-  }
-
-  public BigDecimal getCosmetologistFixedShare() {
-    return cosmetologistFixedShare;
-  }
-
-  public void setCosmetologistFixedShare(BigDecimal cosmetologistFixedShare) {
-    this.cosmetologistFixedShare = cosmetologistFixedShare;
-  }
-
-  public String getComment() {
-    return comment;
-  }
-
-  public void setComment(String comment) {
-    this.comment = comment;
-  }
-
-  public List<TreatmentPayment> getPayments() {
-    return payments;
-  }
-
-  public void setPayments(List<TreatmentPayment> payments) {
-    this.payments = payments;
-  }
-
-  // ===== lógica derivada (no persistida) =====
-
-  /** Suma de todos los pagos registrados. */
-  public BigDecimal getPaidAmount() {
-    return payments.stream()
-        .map(TreatmentPayment::getAmount)
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-  }
-
-  /** Saldo pendiente = total - pagado (nunca negativo). */
-  public BigDecimal getPendingAmount() {
-    BigDecimal pending = totalAmount.subtract(getPaidAmount());
-    return pending.signum() < 0 ? BigDecimal.ZERO : pending;
-  }
+  public List<Payment> getPayments() { return payments; }
+  public void setPayments(List<Payment> payments) { this.payments = payments; }
 }

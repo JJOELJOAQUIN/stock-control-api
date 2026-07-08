@@ -6,6 +6,6 @@ package com.jowi.stock.treatment.enums;
  */
 public enum TreatmentStatus {
   PENDIENTE,
-  PARCIALMENTE_PAGADO,
-  PAGADO
+  PARCIAL,
+  COMPLETO
 }

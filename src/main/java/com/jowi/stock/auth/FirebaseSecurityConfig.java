@@ -77,6 +77,12 @@ public class FirebaseSecurityConfig {
 
                         .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
                         .requestMatchers("/api/stock/**").hasAnyRole("ADMIN", "COSMETOLOGA")
+                        .requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
+
+                        // Tratamientos / pacientes / pagos (peeling y futuros protocolos).
+                        .requestMatchers("/api/treatments/**").hasAnyRole("ADMIN", "COSMETOLOGA")
+
+                        .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA")
                         .anyRequest().authenticated())
                 .addFilterBefore(new FirebaseAuthenticationFilter(appUserService),
                         UsernamePasswordAuthenticationFilter.class)

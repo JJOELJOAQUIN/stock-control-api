@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
 import com.jowi.stock.cash.dto.CashDailySplitResponse;
 import com.jowi.stock.cash.dto.CashCosmetologistSplitResponse;
 import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
@@ -20,13 +19,17 @@ import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.cash.specifications.CashMovementSpecifications;
+import com.jowi.stock.cash.dto.CombinedItemLine;
+import com.jowi.stock.cash.entities.CashMovementItem;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class CashMovementService {
 
   private static final BigDecimal DEFAULT_CARD_RETENTION = new BigDecimal("0.30");
-
+  private static final BigDecimal COSMETOLOGIST_PRODUCT_PERCENT = new BigDecimal("0.05");
   private final CashMovementRepository repository;
 
   public CashMovementService(CashMovementRepository repository) {
@@ -134,6 +137,50 @@ public class CashMovementService {
         m.setDoctorShare(doctorShare);
         m.setCosmetologistShare(cosmetologistShare);
       }
+    }
+
+    // ── Fase 2 (espejo): venta de producto y procedimiento generan un ítem
+    // de detalle con el MISMO split que ya calculó la cabecera. Así las
+    // queries *FromItems cuentan estos movimientos y la rama legacy sólo
+    // queda para datos históricos previos a esta fase. No hay recálculo:
+    // los shares se copian de la cabecera.
+    if (req.source() == CashSource.PRODUCT_SALE || req.source() == CashSource.PROCEDURE) {
+      CashMovementItem mirror = new CashMovementItem();
+      mirror.setKind(
+          req.source() == CashSource.PRODUCT_SALE
+              ? com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+              : com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE);
+
+      // En PRODUCT_SALE el referenceId es el productId; en PROCEDURE no aplica.
+      if (req.source() == CashSource.PRODUCT_SALE) {
+        mirror.setProductId(req.referenceId());
+      } else {
+        // Código de procedimiento: usamos el detail como identificador legible.
+        // (No hay un code estructurado en este request legacy.)
+        mirror.setProcedureCode(null);
+      }
+
+      String description = (req.detail() != null && !req.detail().isBlank())
+          ? req.detail()
+          : (req.comment() != null && !req.comment().isBlank()
+              ? req.comment()
+              : (req.source() == CashSource.PRODUCT_SALE ? "Producto" : "Procedimiento"));
+
+      mirror.setDescription(description.length() > 200
+          ? description.substring(0, 197) + "..."
+          : description);
+
+      // quantity=1 / unitAmount=amount: el conteo de unidades no viaja en este
+      // request legacy. Split y totales quedan exactos igual (se basan en montos).
+      mirror.setQuantity(1);
+      mirror.setUnitAmount(m.getAmount());
+      mirror.setSubtotal(m.getAmount());
+
+      // Copiamos el split ya resuelto en la cabecera (null en LOCAL).
+      mirror.setDoctorShare(m.getDoctorShare());
+      mirror.setCosmetologistShare(m.getCosmetologistShare());
+
+      m.addItem(mirror);
     }
 
     return repository.save(m);
@@ -286,6 +333,21 @@ public class CashMovementService {
         (BigDecimal) row[2]);
   }
 
+  /**
+   * Calcula el neto (amount - retención) según el método de pago.
+   * Única fuente de verdad de la retención: la usan create, createWithFixedShares
+   * y servicios externos (ej. TreatmentService) para no duplicar el %.
+   */
+  public BigDecimal computeNet(BigDecimal amount, PaymentMethod method) {
+    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+      throw new IllegalArgumentException("amount must be > 0");
+
+    BigDecimal percent = resolveRetentionPercent(method, null);
+    BigDecimal gross = amount.setScale(2, RoundingMode.HALF_UP);
+    BigDecimal retention = gross.multiply(percent).setScale(2, RoundingMode.HALF_UP);
+    return gross.subtract(retention).setScale(2, RoundingMode.HALF_UP);
+  }
+
   public CashCosmetologistSplitResponse cosmetologistDailySplit(
       CashContext context,
       java.time.LocalDate date) {
@@ -303,17 +365,18 @@ public class CashMovementService {
     java.time.Instant from = date.atStartOfDay(zone).toInstant();
     java.time.Instant to = date.plusDays(1).atStartOfDay(zone).toInstant();
 
-    Object[] result = repository.cosmetologistProductionSplit(context, from, to);
-
-    Object[] row = (Object[]) result[0];
+    Object[] items = (Object[]) repository
+        .cosmetologistProductionSplitFromItems(context, from, to)[0];
+    Object[] legacy = (Object[]) repository
+        .cosmetologistProductionSplitLegacy(context, from, to)[0];
 
     return new CashCosmetologistSplitResponse(
         date,
         context,
-        (BigDecimal) row[0],
-        (BigDecimal) row[1],
-        (BigDecimal) row[2],
-        (BigDecimal) row[3]);
+        add(items[0], legacy[0]), // procedimiento - cosmetóloga
+        add(items[1], legacy[1]), // procedimiento - médica
+        add(items[2], legacy[2]), // producto - cosmetóloga
+        add(items[3], legacy[3])); // producto - médica
   }
 
   public CashSalesTotalsResponse salesTotals(CashContext context) {
@@ -321,13 +384,13 @@ public class CashMovementService {
       throw new IllegalArgumentException("context is required");
     }
 
-    Object[] result = repository.salesTotalsByContext(context);
-    Object[] row = (Object[]) result[0];
+    Object[] items = (Object[]) repository.salesTotalsFromItems(context)[0];
+    Object[] legacy = (Object[]) repository.salesTotalsLegacy(context)[0];
 
     return new CashSalesTotalsResponse(
         context,
-        (BigDecimal) row[0],
-        (BigDecimal) row[1]);
+        add(items[0], legacy[0]), // total productos
+        add(items[1], legacy[1])); // total procedimientos
   }
 
   private BigDecimal resolveRetentionPercent(
@@ -347,5 +410,163 @@ public class CashMovementService {
     return (method == PaymentMethod.CREDIT || method == PaymentMethod.DEBIT)
         ? DEFAULT_CARD_RETENTION
         : BigDecimal.ZERO;
+  }
+
+  /**
+   * Persiste una venta combinada: una cabecera CashMovement (IN, COMBINED_SALE)
+   * con N ítems. Calcula retención sobre el total, reparte el neto entre los
+   * ítems (proporcional al subtotal, el último absorbe el resto para evitar
+   * drift de redondeo) y resuelve el split por ítem sobre su neto.
+   *
+   * El split (doctor/cosmetóloga) sólo se calcula en CONSULTORIO; en LOCAL los
+   * ítems se guardan sin shares.
+   */
+  public CashMovement createCombined(
+      CashContext context,
+      PaymentMethod paymentMethod,
+      String comment,
+      BigDecimal expectedTotal,
+      List<CombinedItemLine> lines) {
+
+    if (lines == null || lines.isEmpty()) {
+      throw new IllegalArgumentException("La venta combinada requiere al menos un ítem");
+    }
+    if (paymentMethod == null)
+      throw new IllegalArgumentException("paymentMethod is required");
+    if (context == null)
+      throw new IllegalArgumentException("context is required");
+
+    BigDecimal computedTotal = BigDecimal.ZERO;
+    for (CombinedItemLine line : lines) {
+      if (line.subtotal() == null || line.subtotal().compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException("Cada ítem debe tener subtotal > 0");
+      }
+      computedTotal = computedTotal.add(line.subtotal());
+    }
+    computedTotal = computedTotal.setScale(2, RoundingMode.HALF_UP);
+
+    if (expectedTotal != null) {
+      BigDecimal diff = computedTotal.subtract(expectedTotal).abs();
+      if (diff.compareTo(new BigDecimal("0.01")) > 0) {
+        throw new IllegalArgumentException(
+            "El total no coincide con la suma de los ítems");
+      }
+    }
+
+    BigDecimal percent = resolveRetentionPercent(paymentMethod, null);
+    BigDecimal retention = computedTotal.multiply(percent).setScale(2, RoundingMode.HALF_UP);
+    BigDecimal net = computedTotal.subtract(retention).setScale(2, RoundingMode.HALF_UP);
+
+    boolean consultorio = context == CashContext.CONSULTORIO;
+
+    CashMovement m = new CashMovement();
+    m.setType(CashMovementType.IN);
+    m.setSource(CashSource.COMBINED_SALE);
+    m.setPaymentMethod(paymentMethod);
+    m.setContext(context);
+    m.setAmount(computedTotal);
+    m.setRetention(retention);
+    m.setNetAmount(net);
+    m.setComment(comment);
+    m.setDetail(buildCombinedDetail(lines));
+
+    BigDecimal headerDoctor = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    BigDecimal headerCosmo = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    BigDecimal allocatedNet = BigDecimal.ZERO;
+
+    for (int i = 0; i < lines.size(); i++) {
+      CombinedItemLine line = lines.get(i);
+
+      BigDecimal itemNet;
+      if (i < lines.size() - 1) {
+        itemNet = line.subtotal()
+            .divide(computedTotal, 10, RoundingMode.HALF_UP)
+            .multiply(net)
+            .setScale(2, RoundingMode.HALF_UP);
+        allocatedNet = allocatedNet.add(itemNet);
+      } else {
+        // El último ítem absorbe el remanente para que la suma cierre exacta.
+        itemNet = net.subtract(allocatedNet).setScale(2, RoundingMode.HALF_UP);
+      }
+
+      CashMovementItem item = new CashMovementItem();
+      item.setKind(line.kind());
+      item.setProductId(line.productId());
+      item.setProcedureCode(line.procedureCode());
+      item.setDescription(line.description());
+      item.setQuantity(line.quantity());
+      item.setUnitAmount(line.unitAmount().setScale(2, RoundingMode.HALF_UP));
+      item.setSubtotal(line.subtotal().setScale(2, RoundingMode.HALF_UP));
+
+      if (consultorio) {
+        BigDecimal[] shares = resolveItemShares(line, itemNet);
+        item.setDoctorShare(shares[0]);
+        item.setCosmetologistShare(shares[1]);
+        headerDoctor = headerDoctor.add(shares[0]);
+        headerCosmo = headerCosmo.add(shares[1]);
+      }
+
+      m.addItem(item);
+    }
+
+    if (consultorio) {
+      m.setDoctorShare(headerDoctor);
+      m.setCosmetologistShare(headerCosmo);
+    }
+
+    return repository.save(m);
+  }
+
+  /**
+   * Resuelve [doctorShare, cosmetologistShare] en monto sobre el neto del ítem.
+   */
+  private BigDecimal[] resolveItemShares(CombinedItemLine line, BigDecimal itemNet) {
+    switch (line.kind()) {
+      case PRODUCT -> {
+        if (line.performedBy() == null) {
+          throw new IllegalArgumentException(
+              "performedBy es obligatorio para la venta de producto en consultorio");
+        }
+        if (line.performedBy() == CashActor.MEDICA) {
+          return new BigDecimal[] { itemNet, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP) };
+        }
+        BigDecimal cosmo = itemNet
+            .multiply(COSMETOLOGIST_PRODUCT_PERCENT)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal doctor = itemNet.subtract(cosmo).setScale(2, RoundingMode.HALF_UP);
+        return new BigDecimal[] { doctor, cosmo };
+      }
+      case PROCEDURE -> {
+        BigDecimal dp = line.doctorSharePercent();
+        BigDecimal cp = line.cosmetologistSharePercent();
+        if (dp == null || cp == null) {
+          throw new IllegalArgumentException(
+              "Los porcentajes del procedimiento son obligatorios");
+        }
+        if (dp.add(cp).compareTo(BigDecimal.ONE) != 0) {
+          throw new IllegalArgumentException(
+              "doctorSharePercent + cosmetologistSharePercent debe ser 1");
+        }
+        BigDecimal doctor = itemNet.multiply(dp).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal cosmo = itemNet.subtract(doctor).setScale(2, RoundingMode.HALF_UP);
+        return new BigDecimal[] { doctor, cosmo };
+      }
+      default -> throw new IllegalArgumentException("kind desconocido");
+    }
+  }
+
+  /** Resumen legible para la columna detail (join de descripciones, cap 200). */
+  private String buildCombinedDetail(List<CombinedItemLine> lines) {
+    String joined = lines.stream()
+        .map(l -> l.quantity() > 1 ? l.description() + " ×" + l.quantity() : l.description())
+        .collect(Collectors.joining(", "));
+    return joined.length() > 200 ? joined.substring(0, 197) + "..." : joined;
+  }
+
+  /** Suma dos agregados BigDecimal que vienen como Object desde las queries. */
+  private BigDecimal add(Object a, Object b) {
+    BigDecimal x = a == null ? BigDecimal.ZERO : (BigDecimal) a;
+    BigDecimal y = b == null ? BigDecimal.ZERO : (BigDecimal) b;
+    return x.add(y);
   }
 }

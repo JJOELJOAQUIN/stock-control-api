@@ -3,85 +3,91 @@ package com.jowi.stock.treatment.controllers;
 import java.util.List;
 import java.util.UUID;
 
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import com.jowi.stock.cash.enums.CashContext;
-import com.jowi.stock.treatment.dto.CreateTreatmentRequest;
-import com.jowi.stock.treatment.dto.RegisterPaymentRequest;
-import com.jowi.stock.treatment.dto.TreatmentPaymentResponse;
-import com.jowi.stock.treatment.dto.TreatmentResponse;
-import com.jowi.stock.treatment.entities.Treatment;
-import com.jowi.stock.treatment.entities.TreatmentPayment;
+import com.jowi.stock.patient.dto.CreatePatientRequest;
+import com.jowi.stock.patient.dto.PatientResponse;
+import com.jowi.stock.treatment.dto.*;
+import com.jowi.stock.treatment.enums.TreatmentStatus;
 import com.jowi.stock.treatment.services.TreatmentService;
 
 @RestController
 @RequestMapping("/api/treatments")
 public class TreatmentController {
 
-  private final TreatmentService service;
+    private final TreatmentService service;
 
-  public TreatmentController(TreatmentService service) {
-    this.service = service;
-  }
+    public TreatmentController(TreatmentService service) {
+        this.service = service;
+    }
 
-  @PostMapping
-  public ResponseEntity<TreatmentResponse> create(
-      @Valid @RequestBody CreateTreatmentRequest req) {
-    Treatment created = service.createTreatment(
-        req.procedureCode(),
-        req.procedureLabel(),
-        req.patientId(),
-        req.context(),
-        req.totalAmount(),
-        req.cosmetologistFixedShare(),
-        req.comment(),
-        req.firstPaymentAmount(),
-        req.firstPaymentMethod());
+    // ---- Pacientes ----
 
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(TreatmentResponse.from(created, service.resolveStatus(created)));
-  }
+    @PostMapping("/patients")
+    public ResponseEntity<PatientResponse> createPatient(@RequestBody CreatePatientRequest req) {
+        var p = service.createPatient(req.firstName(), req.lastName(), req.dni(), req.phone());
+        return ResponseEntity.status(HttpStatus.CREATED).body(PatientResponse.from(p));
+    }
 
-  @PostMapping("/{id}/payments")
-  public ResponseEntity<TreatmentPaymentResponse> registerPayment(
-      @PathVariable UUID id,
-      @Valid @RequestBody RegisterPaymentRequest req) {
-    TreatmentPayment payment = service.registerPayment(
-        id, req.amount(), req.paymentMethod(), req.comment());
+    @GetMapping("/patients")
+    public ResponseEntity<List<PatientResponse>> searchPatients(
+            @RequestParam(required = false) String q) {
+        var list = service.searchPatients(q).stream().map(PatientResponse::from).toList();
+        return ResponseEntity.ok(list);
+    }
 
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(TreatmentPaymentResponse.from(payment));
-  }
+    // ---- Tratamientos ----
 
-  @GetMapping
-  public ResponseEntity<List<TreatmentResponse>> list(
-      @RequestParam CashContext context,
-      @RequestParam(required = false, defaultValue = "false") boolean pendingOnly) {
-    List<Treatment> treatments = pendingOnly
-        ? service.listPendingByContext(context)
-        : service.listByContext(context);
+    @PostMapping
+    public ResponseEntity<TreatmentResponse> createTreatment(
+            @RequestBody CreateTreatmentRequest req) {
+        var t = service.createTreatment(
+                req.patientId(),
+                req.code(),
+                req.description(),
+                req.totalAmount(),
+                req.cosmetologistFixedShare(),
+                req.maxInstallments() == null ? 2 : req.maxInstallments());
+        return ResponseEntity.status(HttpStatus.CREATED).body(TreatmentResponse.from(t));
+    }
 
-    return ResponseEntity.ok(toResponses(treatments));
-  }
+    @GetMapping("/{treatmentId}")
+    public ResponseEntity<TreatmentResponse> getTreatment(@PathVariable UUID treatmentId) {
+        return ResponseEntity.ok(TreatmentResponse.from(service.getTreatment(treatmentId)));
+    }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<TreatmentResponse> getById(@PathVariable UUID id) {
-    Treatment t = service.getById(id);
-    return ResponseEntity.ok(TreatmentResponse.from(t, service.resolveStatus(t)));
-  }
+    @GetMapping("/by-patient/{patientId}")
+    public ResponseEntity<List<TreatmentResponse>> byPatient(@PathVariable UUID patientId) {
+        var list = service.getPatientTreatments(patientId).stream()
+                .map(TreatmentResponse::from).toList();
+        return ResponseEntity.ok(list);
+    }
 
-  @GetMapping("/by-patient/{patientId}")
-  public ResponseEntity<List<TreatmentResponse>> listByPatient(
-      @PathVariable UUID patientId) {
-    return ResponseEntity.ok(toResponses(service.listByPatient(patientId)));
-  }
+    @GetMapping("/{treatmentId}/payments")
+    public ResponseEntity<List<PaymentResponse>> payments(@PathVariable UUID treatmentId) {
+        var list = service.getTreatmentPayments(treatmentId).stream()
+                .map(PaymentResponse::from).toList();
+        return ResponseEntity.ok(list);
+    }
 
-  private List<TreatmentResponse> toResponses(List<Treatment> treatments) {
-    return treatments.stream()
-        .map(t -> TreatmentResponse.from(t, service.resolveStatus(t)))
-        .toList();
-  }
+    // ---- Pagos ----
+
+    @PostMapping("/{treatmentId}/payments")
+    public ResponseEntity<PaymentResponse> registerPayment(
+            @PathVariable UUID treatmentId,
+            @RequestBody RegisterPaymentRequest req) {
+        var payment = service.registerPayment(
+                treatmentId, req.amount(), req.paymentMethod(), req.context());
+        return ResponseEntity.status(HttpStatus.CREATED).body(PaymentResponse.from(payment));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<TreatmentResponse>> listTreatments(
+            @RequestParam(required = false) TreatmentStatus status) {
+        var list = service.listTreatments(status).stream()
+                .map(TreatmentResponse::from).toList();
+        return ResponseEntity.ok(list);
+    }
 }

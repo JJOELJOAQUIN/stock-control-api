@@ -17,6 +17,11 @@ import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.services.StockService;
 import jakarta.transaction.Transactional;
+import java.util.ArrayList;
+import com.jowi.stock.business.dto.CombinedSaleItemRequest;
+import com.jowi.stock.business.dto.CombinedSaleRequest;
+import com.jowi.stock.cash.dto.CombinedItemLine;
+import com.jowi.stock.cash.enums.CashMovementItemKind;
 
 @Service
 @Transactional
@@ -77,11 +82,12 @@ public class BusinessOperationService {
    * Toda la operación corre en la transacción de la clase: si un ítem falla,
    * se revierte la compra completa.
    *
-   * @param context        contexto de caja/stock
-   * @param comment         comentario general (proveedor / observación)
-   * @param paymentMethod   método de pago de la compra
-   * @param expectedTotal   total calculado por el cliente, validado contra el cálculo del backend
-   * @param items           detalle de ítems (mínimo uno)
+   * @param context       contexto de caja/stock
+   * @param comment       comentario general (proveedor / observación)
+   * @param paymentMethod método de pago de la compra
+   * @param expectedTotal total calculado por el cliente, validado contra el
+   *                      cálculo del backend
+   * @param items         detalle de ítems (mínimo uno)
    */
   public void purchaseOrder(
       CashContext context,
@@ -216,5 +222,94 @@ public class BusinessOperationService {
             null,
             null,
             performedBy));
+  }
+
+  /**
+   * Venta combinada atómica: productos (descuentan stock) y/o procedimientos
+   * (no tocan stock) en una única operación. Genera un solo CashMovement con
+   * N ítems. Corre en la transacción de la clase: si algo falla, se revierte
+   * el stock descontado y no se crea el movimiento.
+   */
+  public void combinedSale(CombinedSaleRequest req) {
+    if (req.items() == null || req.items().isEmpty()) {
+      throw new IllegalArgumentException("La venta debe tener al menos un ítem");
+    }
+
+    StockContext stockContext = req.context().toStockContext();
+    List<CombinedItemLine> lines = new ArrayList<>();
+
+    for (CombinedSaleItemRequest item : req.items()) {
+      if (item.quantity() <= 0) {
+        throw new IllegalArgumentException("La cantidad debe ser mayor a cero");
+      }
+      if (item.subtotal() == null || item.subtotal().compareTo(BigDecimal.ZERO) <= 0) {
+        throw new IllegalArgumentException("El subtotal debe ser mayor a cero");
+      }
+
+      if (item.kind() == CashMovementItemKind.PRODUCT) {
+        if (item.productId() == null) {
+          throw new IllegalArgumentException("productId es obligatorio en un ítem de producto");
+        }
+
+        var product = productService.getById(item.productId());
+
+        // Misma protección que sellByBarcode: no vender por debajo del costo.
+        if (product.getCostPrice() != null) {
+          BigDecimal minExpected = product.getCostPrice()
+              .multiply(BigDecimal.valueOf(item.quantity()));
+          if (item.subtotal().compareTo(minExpected) < 0) {
+            throw new IllegalStateException(
+                "Subtotal menor al costo del producto: " + product.getName());
+          }
+        }
+
+        if (!stockService.exists(item.productId(), stockContext)) {
+          stockService.initStock(item.productId(), stockContext, 0);
+        }
+        stockService.decrease(item.productId(), stockContext, item.quantity());
+
+        lines.add(new CombinedItemLine(
+            CashMovementItemKind.PRODUCT,
+            item.productId(),
+            null,
+            product.getName(), // nombre autoritativo desde backend
+            item.quantity(),
+            item.unitAmount(),
+            item.subtotal(),
+            item.performedBy(),
+            null,
+            null));
+
+      } else if (item.kind() == CashMovementItemKind.PROCEDURE) {
+        if (item.procedureCode() == null || item.procedureCode().isBlank()) {
+          throw new IllegalArgumentException("procedureCode es obligatorio en un ítem de procedimiento");
+        }
+        String description = (item.description() == null || item.description().isBlank())
+            ? item.procedureCode()
+            : item.description();
+
+        lines.add(new CombinedItemLine(
+            CashMovementItemKind.PROCEDURE,
+            null,
+            item.procedureCode(),
+            description,
+            item.quantity(),
+            item.unitAmount(),
+            item.subtotal(),
+            null,
+            item.doctorSharePercent(),
+            item.cosmetologistSharePercent()));
+
+      } else {
+        throw new IllegalArgumentException("kind de ítem desconocido");
+      }
+    }
+
+    cashService.createCombined(
+        req.context(),
+        req.paymentMethod(),
+        req.comment(),
+        req.expectedTotal(),
+        lines);
   }
 }

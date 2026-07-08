@@ -1,5 +1,7 @@
 package com.jowi.stock.cash.entities;
 
+import java.util.ArrayList;
+import java.util.List;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
@@ -64,6 +66,23 @@ public class CashMovement extends BaseEntity {
 
   @Column(name = "cosmetologist_share", precision = 18, scale = 2)
   private BigDecimal cosmetologistShare;
+
+  @OneToMany(mappedBy = "cashMovement", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<CashMovementItem> items = new ArrayList<>();
+
+  /** Agrega un ítem de detalle y setea el lado dueño de la relación. */
+  public void addItem(CashMovementItem item) {
+    item.setCashMovement(this);
+    this.items.add(item);
+  }
+
+  public List<CashMovementItem> getItems() {
+    return items;
+  }
+
+  public void setItems(List<CashMovementItem> items) {
+    this.items = items;
+  }
 
   // ===== getters/setters =====
 

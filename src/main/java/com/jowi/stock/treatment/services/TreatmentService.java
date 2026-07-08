@@ -3,11 +3,9 @@ package com.jowi.stock.treatment.services;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashContext;
@@ -16,248 +14,226 @@ import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.services.CashMovementService;
 import com.jowi.stock.patient.entities.Patient;
-import com.jowi.stock.patient.repositories.PatientRepository;
+import com.jowi.stock.treatment.entities.Payment;
 import com.jowi.stock.treatment.entities.Treatment;
-import com.jowi.stock.treatment.entities.TreatmentPayment;
 import com.jowi.stock.treatment.enums.TreatmentStatus;
+import com.jowi.stock.patient.repositories.PatientRepository;
+import com.jowi.stock.treatment.repositories.PaymentRepository;
 import com.jowi.stock.treatment.repositories.TreatmentRepository;
 
+import jakarta.transaction.Transactional;
+
 @Service
+@Transactional
 public class TreatmentService {
 
-  // Procedimientos que exigen paciente asociado. Hoy solo el peeling protocolo;
-  // mañana se agregan codes acá (o se migra a un flag por procedimiento).
-  private static final Set<String> PATIENT_REQUIRED_CODES =
-      Set.of("PEELING_PROFUNDO_PROTOCOLO");
-
-  // Parte fija (NETA) que cobra la cosmetóloga en tratamientos que la usan
-  // (default global, editable). Cada tratamiento puede override este valor.
-  public static final BigDecimal DEFAULT_COSMETOLOGIST_FIXED_SHARE =
-      new BigDecimal("40000");
-
-  // Debe coincidir con la retención de tarjeta del CashMovementService.
-  private static final BigDecimal DEFAULT_CARD_RETENTION = new BigDecimal("0.30");
-
-  private final TreatmentRepository treatmentRepository;
   private final PatientRepository patientRepository;
-  private final CashMovementService cashMovementService;
+  private final TreatmentRepository treatmentRepository;
+  private final PaymentRepository paymentRepository;
+  private final CashMovementService cashService;
 
   public TreatmentService(
-      TreatmentRepository treatmentRepository,
       PatientRepository patientRepository,
-      CashMovementService cashMovementService) {
-    this.treatmentRepository = treatmentRepository;
+      TreatmentRepository treatmentRepository,
+      PaymentRepository paymentRepository,
+      CashMovementService cashService) {
     this.patientRepository = patientRepository;
-    this.cashMovementService = cashMovementService;
+    this.treatmentRepository = treatmentRepository;
+    this.paymentRepository = paymentRepository;
+    this.cashService = cashService;
   }
 
+  // ======================= PACIENTES =======================
+
+  public Patient createPatient(String firstName, String lastName, String dni, String phone) {
+    if (firstName == null || firstName.isBlank())
+      throw new IllegalArgumentException("El nombre es obligatorio");
+    if (lastName == null || lastName.isBlank())
+      throw new IllegalArgumentException("El apellido es obligatorio");
+
+    String normalizedDni = (dni == null || dni.isBlank()) ? null : dni.trim();
+
+    if (normalizedDni != null) {
+      patientRepository.findByDni(normalizedDni).ifPresent(p -> {
+        throw new IllegalStateException("Ya existe un paciente con ese DNI");
+      });
+    }
+
+    Patient patient = new Patient();
+    patient.setFirstName(firstName.trim());
+    patient.setLastName(lastName.trim());
+    patient.setDni(normalizedDni);
+    patient.setPhone((phone == null || phone.isBlank()) ? null : phone.trim());
+
+    return patientRepository.save(patient);
+  }
+
+  public List<Patient> searchPatients(String term) {
+    if (term == null || term.isBlank())
+      return patientRepository.findAll();
+    return patientRepository
+        .findByLastNameContainingIgnoreCaseOrFirstNameContainingIgnoreCase(term, term);
+  }
+
+  // ======================= TRATAMIENTOS =======================
+
   /**
-   * Crea un tratamiento y, opcionalmente, registra su primer pago en la
-   * misma operación.
+   * Crea un tratamiento para un paciente. Genérico: sirve para cualquier
+   * protocolo con pagos. Para peeling, code = código del protocolo,
+   * maxInstallments = 2, cosmetologistFixedShare = el fijo de la cosmetóloga.
    */
-  @Transactional
   public Treatment createTreatment(
-      String procedureCode,
-      String procedureLabel,
       UUID patientId,
-      CashContext context,
+      String code,
+      String description,
       BigDecimal totalAmount,
       BigDecimal cosmetologistFixedShare,
-      String comment,
-      // primer pago (opcional)
-      BigDecimal firstPaymentAmount,
-      PaymentMethod firstPaymentMethod) {
+      int maxInstallments) {
 
-    if (procedureCode == null || procedureCode.isBlank()) {
-      throw new IllegalArgumentException("procedureCode is required");
-    }
-    if (context == null) {
-      throw new IllegalArgumentException("context is required");
-    }
-    if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new IllegalArgumentException("totalAmount must be > 0");
-    }
+    Patient patient = patientRepository.findById(patientId)
+        .orElseThrow(() -> new IllegalArgumentException("Paciente no encontrado"));
 
-    Patient patient = null;
-    if (patientId != null) {
-      patient = patientRepository.findById(patientId)
-          .orElseThrow(() -> new IllegalArgumentException("patient not found"));
-    }
+    if (code == null || code.isBlank())
+      throw new IllegalArgumentException("El código del tratamiento es obligatorio");
+    if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0)
+      throw new IllegalArgumentException("El monto total debe ser mayor a cero");
+    if (maxInstallments < 1)
+      throw new IllegalArgumentException("El máximo de cuotas debe ser al menos 1");
 
-    // Validación: ciertos procedimientos exigen paciente.
-    if (PATIENT_REQUIRED_CODES.contains(procedureCode) && patient == null) {
-      throw new IllegalArgumentException(
-          "Este tratamiento requiere un paciente asociado");
-    }
+    Treatment t = new Treatment();
+    t.setPatient(patient);
+    t.setCode(code);
+    t.setDescription(description);
+    t.setTotalAmount(totalAmount.setScale(2, RoundingMode.HALF_UP));
+    t.setPaidAmount(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+    t.setCosmetologistFixedShare(
+        cosmetologistFixedShare == null
+            ? null
+            : cosmetologistFixedShare.setScale(2, RoundingMode.HALF_UP));
+    t.setMaxInstallments(maxInstallments);
+    t.setStatus(TreatmentStatus.PENDIENTE);
 
-    Treatment treatment = new Treatment();
-    treatment.setProcedureCode(procedureCode);
-    treatment.setProcedureLabel(procedureLabel);
-    treatment.setPatient(patient);
-    treatment.setContext(context);
-    treatment.setTotalAmount(totalAmount.setScale(2, RoundingMode.HALF_UP));
-
-    // Reparto fijo de la cosmetóloga: usa el override si vino, si no el
-    // default global para los procedimientos que lo requieren (peeling).
-    BigDecimal resolvedFixedShare = cosmetologistFixedShare;
-    if (resolvedFixedShare == null && PATIENT_REQUIRED_CODES.contains(procedureCode)) {
-      resolvedFixedShare = DEFAULT_COSMETOLOGIST_FIXED_SHARE;
-    }
-    treatment.setCosmetologistFixedShare(
-        resolvedFixedShare != null
-            ? resolvedFixedShare.setScale(2, RoundingMode.HALF_UP)
-            : null);
-    treatment.setComment(comment);
-
-    treatment = treatmentRepository.save(treatment);
-
-    // Primer pago opcional.
-    if (firstPaymentAmount != null && firstPaymentAmount.compareTo(BigDecimal.ZERO) > 0) {
-      registerPayment(treatment.getId(), firstPaymentAmount, firstPaymentMethod, null);
-      // recargar para reflejar el pago en la colección
-      treatment = treatmentRepository.findById(treatment.getId()).orElseThrow();
-    }
-
-    return treatment;
+    return treatmentRepository.save(t);
   }
 
+  public Treatment getTreatment(UUID treatmentId) {
+    return treatmentRepository.findById(treatmentId)
+        .orElseThrow(() -> new IllegalArgumentException("Tratamiento no encontrado"));
+  }
+
+  public List<Treatment> getPatientTreatments(UUID patientId) {
+    return treatmentRepository.findByPatientId(patientId);
+  }
+
+  public List<Payment> getTreatmentPayments(UUID treatmentId) {
+    return paymentRepository.findByTreatmentIdOrderByInstallmentNumberAsc(treatmentId);
+  }
+
+  // ======================= PAGOS =======================
+
   /**
-   * Registra un pago de un tratamiento: valida que no sobrepague, calcula el
-   * reparto (la cosmetóloga cobra su parte fija primero), crea el CashMovement
-   * y lo vincula al pago.
+   * Registra un pago de un tratamiento. El primer pago (installment 1) aplica
+   * el monto fijo de la cosmetóloga; los siguientes van 100% a la médica.
+   * Genera el CashMovement correspondiente y lo vincula al Payment.
+   *
+   * @param context contexto de caja (normalmente CONSULTORIO para peeling)
    */
-  @Transactional
-  public TreatmentPayment registerPayment(
+  public Payment registerPayment(
       UUID treatmentId,
       BigDecimal amount,
       PaymentMethod paymentMethod,
-      String comment) {
+      CashContext context) {
 
-    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new IllegalArgumentException("amount must be > 0");
+    Treatment t = getTreatment(treatmentId);
+
+    if (t.getStatus() == TreatmentStatus.COMPLETO)
+      throw new IllegalStateException("El tratamiento ya está saldado");
+
+    if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0)
+      throw new IllegalArgumentException("El monto del pago debe ser mayor a cero");
+
+    List<Payment> existing = getTreatmentPayments(treatmentId);
+    int nextInstallment = existing.size() + 1;
+
+    if (nextInstallment > t.getMaxInstallments())
+      throw new IllegalStateException(
+          "El tratamiento ya alcanzó el máximo de cuotas (" + t.getMaxInstallments() + ")");
+
+    BigDecimal amountScaled = amount.setScale(2, RoundingMode.HALF_UP);
+
+    // No permitir pagar de más.
+    BigDecimal remaining = t.getTotalAmount().subtract(t.getPaidAmount());
+    if (amountScaled.compareTo(remaining) > 0)
+      throw new IllegalStateException(
+          "El pago supera el saldo pendiente (" + remaining + ")");
+
+    boolean isFirst = nextInstallment == 1;
+    BigDecimal net = cashService.computeNet(amountScaled, paymentMethod);
+
+    CashMovement movement;
+    if (isFirst && t.getCosmetologistFixedShare() != null
+        && context == CashContext.CONSULTORIO) {
+
+      BigDecimal cosmoShare = t.getCosmetologistFixedShare();
+
+      if (cosmoShare.compareTo(net) > 0)
+        throw new IllegalStateException(
+            "El monto fijo de la cosmetóloga (" + cosmoShare
+                + ") supera el neto del pago (" + net + ")");
+
+      BigDecimal doctorShare = net.subtract(cosmoShare).setScale(2, RoundingMode.HALF_UP);
+
+      movement = cashService.createWithFixedShares(
+          CashMovementType.IN,
+          CashSource.PROCEDURE,
+          paymentMethod,
+          context,
+          amountScaled,
+          null,
+          "Pago 1 - " + t.getDescription(),
+          treatmentId,
+          doctorShare,
+          cosmoShare);
+
+    } else {
+      // Segundo pago (o sin fijo): todo a la médica.
+      movement = cashService.createWithFixedShares(
+          CashMovementType.IN,
+          CashSource.PROCEDURE,
+          paymentMethod,
+          context,
+          amountScaled,
+          null,
+          "Pago " + nextInstallment + " - " + t.getDescription(),
+          treatmentId,
+          net,
+          BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
     }
-    if (paymentMethod == null) {
-      throw new IllegalArgumentException("paymentMethod is required");
-    }
 
-    Treatment treatment = treatmentRepository.findById(treatmentId)
-        .orElseThrow(() -> new IllegalArgumentException("treatment not found"));
-
-    BigDecimal pending = treatment.getPendingAmount();
-    BigDecimal normalizedAmount = amount.setScale(2, RoundingMode.HALF_UP);
-
-    // Anti-sobrepago: no se puede pagar más que el saldo pendiente.
-    if (normalizedAmount.compareTo(pending) > 0) {
-      throw new IllegalArgumentException(
-          "El pago supera el saldo pendiente del tratamiento");
-    }
-
-    String movementComment = comment != null && !comment.isBlank()
-        ? comment
-        : buildPaymentComment(treatment);
-
-    // El reparto se calcula sobre el NETO (después de retención de tarjeta).
-    // Primero creamos el movimiento para conocer el neto real, pero como el
-    // neto depende solo del monto y el método, lo anticipamos acá para repartir.
-    BigDecimal retentionPercent =
-        (paymentMethod == PaymentMethod.CREDIT || paymentMethod == PaymentMethod.DEBIT)
-            ? DEFAULT_CARD_RETENTION
-            : BigDecimal.ZERO;
-    BigDecimal retention = normalizedAmount
-        .multiply(retentionPercent)
-        .setScale(2, RoundingMode.HALF_UP);
-    BigDecimal net = normalizedAmount.subtract(retention).setScale(2, RoundingMode.HALF_UP);
-
-    // Reparto: la cosmetóloga cobra su parte fija NETA hasta agotarla; el resto
-    // (incluida la retención) lo absorbe la médica.
-    BigDecimal cosmeShareThisPayment = BigDecimal.ZERO;
-    BigDecimal fixedShare = treatment.getCosmetologistFixedShare();
-
-    if (fixedShare != null && fixedShare.compareTo(BigDecimal.ZERO) > 0) {
-      BigDecimal alreadyToCosme = treatment.getPayments().stream()
-          .map(TreatmentPayment::getCosmetologistShare)
-          .filter(s -> s != null)
-          .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-      BigDecimal remainingForCosme = fixedShare.subtract(alreadyToCosme);
-      if (remainingForCosme.signum() < 0) {
-        remainingForCosme = BigDecimal.ZERO;
-      }
-
-      // No puede llevarse más que el neto disponible de este pago.
-      cosmeShareThisPayment = remainingForCosme.min(net);
-    }
-
-    BigDecimal doctorShareThisPayment = net.subtract(cosmeShareThisPayment);
-
-    // Crea el movimiento de caja con shares en monto (única fuente de verdad
-    // del dinero). referenceId apunta al tratamiento.
-    CashMovement movement = cashMovementService.createWithFixedShares(
-        CashMovementType.IN,
-        CashSource.PROCEDURE,
-        paymentMethod,
-        treatment.getContext(),
-        normalizedAmount,
-        null, // retentionPercent override (usa el default por método)
-        movementComment,
-        treatment.getId(),
-        doctorShareThisPayment,
-        cosmeShareThisPayment);
-
-    // Registra el pago vinculado al movimiento.
-    TreatmentPayment payment = new TreatmentPayment();
-    payment.setTreatment(treatment);
-    payment.setAmount(normalizedAmount);
+    Payment payment = new Payment();
+    payment.setAmount(amountScaled);
     payment.setPaymentMethod(paymentMethod);
+    payment.setInstallmentNumber(nextInstallment);
     payment.setCashMovementId(movement.getId());
-    payment.setDoctorShare(movement.getDoctorShare());
-    payment.setCosmetologistShare(movement.getCosmetologistShare());
-    payment.setComment(movementComment);
+    t.addPayment(payment);
 
-    treatment.getPayments().add(payment);
-    treatmentRepository.save(treatment);
+    BigDecimal newPaid = t.getPaidAmount().add(amountScaled).setScale(2, RoundingMode.HALF_UP);
+    t.setPaidAmount(newPaid);
 
+    if (newPaid.compareTo(t.getTotalAmount()) >= 0) {
+      t.setStatus(TreatmentStatus.COMPLETO);
+    } else {
+      t.setStatus(TreatmentStatus.PARCIAL);
+    }
+
+    treatmentRepository.save(t);
     return payment;
   }
 
-  @Transactional(readOnly = true)
-  public TreatmentStatus resolveStatus(Treatment treatment) {
-    BigDecimal paid = treatment.getPaidAmount();
-    if (paid.compareTo(BigDecimal.ZERO) == 0) {
-      return TreatmentStatus.PENDIENTE;
+  public List<Treatment> listTreatments(TreatmentStatus status) {
+    if (status == null) {
+      return treatmentRepository.findAllByOrderByStatusAscCreatedAtDesc();
     }
-    if (paid.compareTo(treatment.getTotalAmount()) >= 0) {
-      return TreatmentStatus.PAGADO;
-    }
-    return TreatmentStatus.PARCIALMENTE_PAGADO;
-  }
-
-  @Transactional(readOnly = true)
-  public Treatment getById(UUID id) {
-    return treatmentRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("treatment not found"));
-  }
-
-  @Transactional(readOnly = true)
-  public List<Treatment> listByContext(CashContext context) {
-    return treatmentRepository.findByContextOrderByCreatedAtDesc(context);
-  }
-
-  @Transactional(readOnly = true)
-  public List<Treatment> listPendingByContext(CashContext context) {
-    return treatmentRepository.findPendingByContext(context);
-  }
-
-  @Transactional(readOnly = true)
-  public List<Treatment> listByPatient(UUID patientId) {
-    return treatmentRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
-  }
-
-  private String buildPaymentComment(Treatment treatment) {
-    String label = treatment.getProcedureLabel() != null
-        ? treatment.getProcedureLabel()
-        : treatment.getProcedureCode();
-    int paymentNumber = treatment.getPayments().size() + 1;
-    return String.format("%s - pago %d", label, paymentNumber);
+    return treatmentRepository.findByStatusIn(List.of(status));
   }
 }

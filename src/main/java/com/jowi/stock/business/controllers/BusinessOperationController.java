@@ -4,7 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.jowi.stock.business.dto.CombinedSaleRequest;
 import com.jowi.stock.business.dto.PurchaseOrderRequest;
 import com.jowi.stock.business.dto.SellByBarcodeRequest;
 import com.jowi.stock.business.dto.SellProductRequest;
@@ -58,6 +58,13 @@ public class BusinessOperationController {
         req.comment(),
         req.performedBy());
 
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+
+  @PostMapping("/combined-sale")
+  public ResponseEntity<Void> combinedSale(@Valid @RequestBody CombinedSaleRequest req) {
+    service.combinedSale(req);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 }

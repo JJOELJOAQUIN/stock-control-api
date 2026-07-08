@@ -1,36 +1,20 @@
 services:
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: stock_sqlserver
+    image: postgres:16
+    container_name: stock_postgres
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      MSSQL_PID: "Developer"
+      POSTGRES_DB: stock_control
+      POSTGRES_USER: stock_user
+      POSTGRES_PASSWORD: stock_pass
     ports:
-      - "1433:1433"
+      - "5432:5432"
     volumes:
-      - mssql_data:/var/opt/mssql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$MSSQL_SA_PASSWORD -Q 'SELECT 1' -C || exit 1"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U stock_user -d stock_control"]
+      interval: 5s
       timeout: 5s
-      retries: 20
-
-  api:
-    build: .
-    container_name: stock_api
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SPRING_PROFILES_ACTIVE: "docker"
-      SPRING_DATASOURCE_URL: "jdbc:sqlserver://db:1433;databaseName=stock_control;encrypt=false;trustServerCertificate=true"
-      SPRING_DATASOURCE_USERNAME: "sa"
-      SPRING_DATASOURCE_PASSWORD: "${MSSQL_SA_PASSWORD}"
-      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
-      SECURITY_FIREBASE_ENABLED: "false"
-    ports:
-      - "8080:8080"
+      retries: 10
 
 volumes:
-  mssql_data:
+  postgres_data:

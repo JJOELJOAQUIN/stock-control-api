@@ -92,13 +92,15 @@ SECURITY_FIREBASE_ENABLED=true
 ### Comando para correr el proyecto
 
 ```pruebas locales con profiles
-mvn clean spring-boot:run -Dspring-boot.run.profiles=local
+./mvnw clean spring-boot:run -Dspring-boot.run.profiles=local
 
 
 ```bash
 mvn clean spring-boot:run
 ```
-./mvnw clean spring-boot:run -Dspring-boot.run.profiles=local
+levantar docker local: 
+
+docker compose up -d
 
 Swagger disponible en:
 
@@ -108,6 +110,11 @@ http://localhost:8080/swagger-ui/index.html
 
 ---
 
+
+docker bases de prueba: 
+
+
+docker exec -it NOMBRE_CONTENEDOR psql -U stock_user -d stock_control
 ## 🧪 Testing & Coverage
 
 Perfil `test` utiliza H2 en memoria.

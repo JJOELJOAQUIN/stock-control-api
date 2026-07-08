@@ -18,6 +18,9 @@ public class AuthController {
 
   @GetMapping("/me")
   public ResponseEntity<AuthMeResponse> me(Authentication authentication) {
+    System.out.println(">>> /me authentication = " + authentication);
+    System.out.println(">>> /me getName() = " + (authentication == null ? "NULL" : authentication.getName()));
+
     String firebaseUid = authentication.getName();
 
     AppUser user = repository.findByFirebaseUid(firebaseUid)
@@ -28,8 +31,6 @@ public class AuthController {
             user.getFirebaseUid(),
             user.getEmail(),
             user.getRole().name(),
-            user.getEnabled()
-        )
-    );
+            user.getEnabled()));
   }
 }

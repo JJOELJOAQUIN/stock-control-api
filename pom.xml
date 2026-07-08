@@ -84,6 +84,12 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!-- Evita el error de TimeZone contra Postgres: fuerza el
+                         nombre canónico en la JVM al correr `mvn spring-boot:run`.
+                         Solo afecta el run local; prod (java -jar) no lo usa. -->
+                    <jvmArguments>-Duser.timezone=America/Argentina/Buenos_Aires</jvmArguments>
+                </configuration>
             </plugin>
         </plugins>
     </build>

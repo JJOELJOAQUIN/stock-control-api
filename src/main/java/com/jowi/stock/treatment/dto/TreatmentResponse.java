@@ -1,46 +1,36 @@
 package com.jowi.stock.treatment.dto;
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import com.jowi.stock.cash.enums.CashContext;
-import com.jowi.stock.patient.dto.PatientResponse;
 import com.jowi.stock.treatment.entities.Treatment;
-import com.jowi.stock.treatment.enums.TreatmentStatus;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 public record TreatmentResponse(
     UUID id,
-    String procedureCode,
-    String procedureLabel,
-    PatientResponse patient,
-    CashContext context,
+    UUID patientId,
+    String patientName,
+    String code,
+    String description,
     BigDecimal totalAmount,
     BigDecimal paidAmount,
-    BigDecimal pendingAmount,
-    TreatmentStatus status,
+    BigDecimal remainingAmount,
     BigDecimal cosmetologistFixedShare,
-    String comment,
-    List<TreatmentPaymentResponse> payments,
-    Instant createdAt) {
+    Integer maxInstallments,
+    Integer paymentsCount,
+    String status) {
 
-  public static TreatmentResponse from(Treatment t, TreatmentStatus status) {
+  public static TreatmentResponse from(Treatment t) {
     return new TreatmentResponse(
         t.getId(),
-        t.getProcedureCode(),
-        t.getProcedureLabel(),
-        t.getPatient() != null ? PatientResponse.from(t.getPatient()) : null,
-        t.getContext(),
+        t.getPatient().getId(),
+        t.getPatient().getFirstName() + " " + t.getPatient().getLastName(),
+        t.getCode(),
+        t.getDescription(),
         t.getTotalAmount(),
         t.getPaidAmount(),
-        t.getPendingAmount(),
-        status,
+        t.getTotalAmount().subtract(t.getPaidAmount()),
         t.getCosmetologistFixedShare(),
-        t.getComment(),
-        t.getPayments().stream()
-            .map(TreatmentPaymentResponse::from)
-            .toList(),
-        t.getCreatedAt());
+        t.getMaxInstallments(),
+        t.getPayments() == null ? 0 : t.getPayments().size(),
+        t.getStatus().name());
   }
 }

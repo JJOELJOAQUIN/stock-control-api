@@ -5,5 +5,6 @@ public enum CashSource {
   PROCEDURE,
   EXPENSE,
   PROVIDER_PAYMENT,
-  ADJUSTMENT
+  ADJUSTMENT,
+  COMBINED_SALE,
 }
