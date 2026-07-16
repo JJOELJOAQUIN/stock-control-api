@@ -16,7 +16,8 @@ public record ProductBatchExpirationResponse(
     String lotNumber,
     Integer quantityCurrent,
     LocalDate expirationDate,
-    Long daysToExpire
+    Long daysToExpire,
+    Boolean estimated
 ) {
   public static ProductBatchExpirationResponse from(ProductBatch batch) {
     return new ProductBatchExpirationResponse(
@@ -28,7 +29,8 @@ public record ProductBatchExpirationResponse(
         batch.getLotNumber(),
         batch.getQuantityCurrent(),
         batch.getExpirationDate(),
-        ChronoUnit.DAYS.between(LocalDate.now(), batch.getExpirationDate())
+        ChronoUnit.DAYS.between(LocalDate.now(), batch.getExpirationDate()),
+        batch.getExpirationEstimated()
     );
   }
 }

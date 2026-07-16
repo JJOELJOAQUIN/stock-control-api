@@ -1,5 +1,6 @@
 package com.jowi.stock.stock.services;
 
+import com.jowi.stock.batch.services.ProductBatchService;
 import com.jowi.stock.movement.enums.StockMovementReason;
 import com.jowi.stock.movement.enums.StockMovementType;
 import com.jowi.stock.movement.services.StockMovementService;
@@ -26,14 +27,17 @@ public class StockService {
   private final StockRepository stockRepository;
   private final ProductService productService;
   private final StockMovementService movementService;
+  private final ProductBatchService batchService;
 
   public StockService(
       StockRepository stockRepository,
       ProductService productService,
-      StockMovementService movementService) {
+      StockMovementService movementService,
+      ProductBatchService batchService) {
     this.stockRepository = stockRepository;
     this.productService = productService;
     this.movementService = movementService;
+    this.batchService = batchService;
   }
 
   private void validateScope(Product product, StockContext context) {
@@ -122,7 +126,28 @@ public class StockService {
         .collect(Collectors.toList());
   }
 
+  /**
+   * Salida de stock por venta (comportamiento histórico, sin cambios de
+   * firma para no romper llamadas existentes).
+   */
   public void decrease(UUID productId, StockContext context, int qty) {
+    decrease(productId, context, qty, StockMovementReason.VENTA, "Salida de stock");
+  }
+
+  /**
+   * Salida de stock con motivo y comentario explícitos. Usada por ventas
+   * (motivo VENTA) y por consumos internos (USO_PERSONAL, USO_CAMILLA,
+   * TRASLADO, MUESTRA, REGALO, PEDIDO_ESPECIAL, OTRO).
+   *
+   * Además de descontar el stock, consume los lotes en orden FEFO para que
+   * los avisos de vencimiento reflejen solo lotes con existencia real.
+   */
+  public void decrease(
+      UUID productId,
+      StockContext context,
+      int qty,
+      StockMovementReason reason,
+      String comment) {
 
     validateQty(qty);
 
@@ -143,13 +168,18 @@ public class StockService {
       throw new IllegalStateException("Concurrent stock modification detected");
     }
 
+    // Mantiene los lotes sincronizados con el stock (fix NCTF 130 HA:
+    // antes los lotes nunca se descontaban y seguían apareciendo como
+    // próximos a vencer aunque el producto ya no tuviera stock).
+    batchService.consume(productId, context, qty);
+
     movementService.register(
         productId,
         context,
         StockMovementType.OUT,
         qty,
-        StockMovementReason.VENTA,
-        "Salida de stock");
+        reason,
+        comment);
   }
 
   public boolean exists(UUID productId, StockContext context) {

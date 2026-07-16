@@ -42,8 +42,23 @@ public class ProductBatchService {
 
     Product product = productService.getById(productId);
 
-    if (Boolean.TRUE.equals(product.getExpirable()) && expirationDate == null) {
-      throw new IllegalArgumentException("Expiration date is required for expirable products");
+    LocalDate effectiveExpiration = expirationDate;
+    boolean estimated = false;
+
+    // Productos magistrales: si no se cargó vencimiento manual pero el
+    // producto tiene vida útil configurada (meses), se estima el vencimiento
+    // desde la fecha de ingreso al consultorio.
+    if (effectiveExpiration == null
+        && product.getShelfLifeMonths() != null
+        && product.getShelfLifeMonths() > 0) {
+      effectiveExpiration = LocalDate.now().plusMonths(product.getShelfLifeMonths());
+      estimated = true;
+    }
+
+    if (Boolean.TRUE.equals(product.getExpirable()) && effectiveExpiration == null) {
+      throw new IllegalArgumentException(
+          "El producto es vencible: cargá la fecha de vencimiento en la compra "
+              + "o configurá su vida útil estimada (meses) en la ficha del producto");
     }
 
     ProductBatch batch = new ProductBatch();
@@ -51,10 +66,46 @@ public class ProductBatchService {
     batch.setContext(context);
     batch.setQuantityInitial(quantity);
     batch.setQuantityCurrent(quantity);
-    batch.setExpirationDate(expirationDate);
+    batch.setExpirationDate(effectiveExpiration);
+    batch.setExpirationEstimated(estimated);
     batch.setLotNumber(lotNumber);
 
     return repository.save(batch);
+  }
+
+  /**
+   * Consume lotes en orden FEFO (primero los que vencen antes; los lotes sin
+   * fecha quedan al final por el NULLS LAST de Postgres). Se llama en cada
+   * salida de stock (venta, venta combinada, consumo interno) para que
+   * quantityCurrent de los lotes refleje el stock real y los avisos de
+   * "próximo a vencer" no muestren lotes ya utilizados (caso NCTF 130 HA).
+   *
+   * Tolerante a datos legacy: si el stock histórico no tiene lote asociado
+   * (ingresos previos al sistema de lotes o por /api/stock/{id}/in), consume
+   * lo que haya y no falla.
+   */
+  public void consume(UUID productId, StockContext context, int quantity) {
+    if (quantity <= 0) {
+      return;
+    }
+
+    List<ProductBatch> batches = repository
+        .findByProductIdAndContextAndQuantityCurrentGreaterThanOrderByExpirationDateAsc(
+            productId, context, 0);
+
+    int remaining = quantity;
+
+    for (ProductBatch batch : batches) {
+      if (remaining <= 0) {
+        break;
+      }
+
+      int take = Math.min(batch.getQuantityCurrent(), remaining);
+      batch.setQuantityCurrent(batch.getQuantityCurrent() - take);
+      remaining -= take;
+    }
+
+    repository.saveAll(batches);
   }
 
   @Transactional(readOnly = true)

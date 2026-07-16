@@ -15,5 +15,7 @@ public record PatchProductRequest(
     Boolean active,
     BigDecimal costPrice,
     BigDecimal salePrice,
-    BigDecimal defaultMarkupPercentage
+    BigDecimal defaultMarkupPercentage,
+    Integer shelfLifeMonths,
+    Integer restockPriority
 ) {}

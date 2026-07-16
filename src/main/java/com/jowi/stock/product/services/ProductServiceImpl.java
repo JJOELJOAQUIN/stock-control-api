@@ -52,6 +52,8 @@ public class ProductServiceImpl implements ProductService {
     product.setCostPrice(request.costPrice());
     product.setSalePrice(request.salePrice());
     product.setDefaultMarkupPercentage(request.defaultMarkupPercentage());
+    product.setShelfLifeMonths(request.shelfLifeMonths());
+    product.setRestockPriority(request.restockPriority());
 
     validateProduct(product);
 
@@ -92,6 +94,13 @@ public class ProductServiceImpl implements ProductService {
     p.setCostPrice(r.costPrice());
     p.setSalePrice(r.salePrice());
     p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
+    p.setShelfLifeMonths(r.shelfLifeMonths());
+
+    // Solo pisamos la prioridad si el cliente la envió: evita que clientes
+    // viejos (sin el campo) la reseteen a 0 en cada edición.
+    if (r.restockPriority() != null) {
+      p.setRestockPriority(r.restockPriority());
+    }
 
     validateProduct(p);
 
@@ -125,6 +134,12 @@ public class ProductServiceImpl implements ProductService {
     if (r.defaultMarkupPercentage() != null)
       p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
 
+    if (r.shelfLifeMonths() != null)
+      p.setShelfLifeMonths(r.shelfLifeMonths());
+
+    if (r.restockPriority() != null)
+      p.setRestockPriority(r.restockPriority());
+
     validateProduct(p);
 
     return productRepository.save(p);
@@ -156,6 +171,10 @@ public class ProductServiceImpl implements ProductService {
     if (product.getMinimumStock() < 0) {
       throw new IllegalArgumentException("Minimum stock cannot be negative");
     }
+
+    if (product.getShelfLifeMonths() != null && product.getShelfLifeMonths() <= 0) {
+      throw new IllegalArgumentException("Shelf life months must be greater than zero");
+    }
   }
 
   @Override
@@ -178,6 +197,8 @@ public class ProductServiceImpl implements ProductService {
       product.setCostPrice(req.costPrice());
       product.setSalePrice(req.salePrice());
       product.setDefaultMarkupPercentage(req.defaultMarkupPercentage());
+      product.setShelfLifeMonths(req.shelfLifeMonths());
+      product.setRestockPriority(req.restockPriority());
       validateProduct(product);
 
       productRepository.save(product);
@@ -212,15 +233,19 @@ public class ProductServiceImpl implements ProductService {
             product.getScope().name().equals(context.name()))
         .map(product -> {
           int currentStock = 0;
-          boolean belowMinimum = true;
 
           var stockOpt = stockRepository.findByProductIdAndContext(product.getId(), context);
 
           if (stockOpt.isPresent()) {
-            var stock = stockOpt.get();
-            currentStock = stock.getCurrent();
-            belowMinimum = stock.isBelowMinimum();
+            currentStock = stockOpt.get().getCurrent();
           }
+
+          // FIX: antes, un producto sin fila de stock quedaba con
+          // belowMinimum = true aunque su mínimo fuera 0, y eso inflaba el
+          // aviso de "stock bajo". La regla es una sola y se aplica siempre:
+          // está bajo si el stock actual (0 si no hay fila) está por debajo
+          // del mínimo configurado.
+          boolean belowMinimum = currentStock < product.getMinimumStock();
 
           return new ProductWithStockResponse(
               product.getId(),
@@ -234,11 +259,10 @@ public class ProductServiceImpl implements ProductService {
               belowMinimum,
               product.getActive(),
               product.getCostPrice(),
-
               product.getSalePrice(),
-              product.getDefaultMarkupPercentage()
-
-        );
+              product.getDefaultMarkupPercentage(),
+              product.getShelfLifeMonths(),
+              product.getRestockPriority());
         })
         .toList();
   }

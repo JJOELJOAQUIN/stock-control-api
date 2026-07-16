@@ -63,6 +63,41 @@ public class Product extends BaseEntity {
   @Column(name = "default_markup_percentage", precision = 5, scale = 2)
   private BigDecimal defaultMarkupPercentage;
 
+  /**
+   * Vida útil estimada en meses para productos SIN fecha de vencimiento
+   * impresa (magistrales). Si está configurada y en la compra no se carga
+   * vencimiento manual, el sistema calcula la fecha estimada desde la fecha
+   * de ingreso. Null = sin estimación automática.
+   *
+   * Ejemplos: cremas/emulsiones 6, serums 8, espumas/limpieza 8,
+   * Vitamina C Plus 1, Labial Vitamina E pura 3.
+   */
+  @Column(name = "shelf_life_months")
+  private Integer shelfLifeMonths;
+
+  /**
+   * Prioridad de reposición para el aviso de stock bajo.
+   * 0 = normal, 1 = alta, 2 = crítica.
+   */
+  @Column(name = "restock_priority", nullable = false)
+  private Integer restockPriority = 0;
+
+  public Integer getShelfLifeMonths() {
+    return shelfLifeMonths;
+  }
+
+  public void setShelfLifeMonths(Integer shelfLifeMonths) {
+    this.shelfLifeMonths = shelfLifeMonths;
+  }
+
+  public Integer getRestockPriority() {
+    return restockPriority;
+  }
+
+  public void setRestockPriority(Integer restockPriority) {
+    this.restockPriority = restockPriority == null ? 0 : restockPriority;
+  }
+
   public BigDecimal getSalePrice() {
     return salePrice;
   }

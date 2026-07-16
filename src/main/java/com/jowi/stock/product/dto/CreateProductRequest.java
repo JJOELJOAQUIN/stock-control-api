@@ -21,5 +21,7 @@ public record CreateProductRequest(
         String barcode,
         @NotNull BigDecimal costPrice,
         BigDecimal salePrice,
-        BigDecimal defaultMarkupPercentage) {
+        BigDecimal defaultMarkupPercentage,
+        @Min(1) Integer shelfLifeMonths,
+        @Min(0) Integer restockPriority) {
 }

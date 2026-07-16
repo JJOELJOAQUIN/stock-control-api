@@ -6,5 +6,10 @@ public enum StockMovementReason {
   USO_CAMILLA,
   AJUSTE_ERROR,
   VENCIMIENTO,
-  TRASLADO
+  TRASLADO,
+  USO_PERSONAL,
+  MUESTRA,
+  REGALO,
+  PEDIDO_ESPECIAL,
+  OTRO
 }

@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.jowi.stock.business.dto.CombinedSaleRequest;
+import com.jowi.stock.business.dto.InternalConsumptionRequest;
 import com.jowi.stock.business.dto.PurchaseOrderRequest;
 import com.jowi.stock.business.dto.SellByBarcodeRequest;
 import com.jowi.stock.business.dto.SellProductRequest;
@@ -61,10 +62,20 @@ public class BusinessOperationController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-
   @PostMapping("/combined-sale")
   public ResponseEntity<Void> combinedSale(@Valid @RequestBody CombinedSaleRequest req) {
     service.combinedSale(req);
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  /**
+   * Consumo interno / uso personal / carrito-camilla: descuenta stock con
+   * trazabilidad, sin impacto en caja ni en métricas de ventas.
+   */
+  @PostMapping("/internal-consumption")
+  public ResponseEntity<Void> internalConsumption(
+      @Valid @RequestBody InternalConsumptionRequest req) {
+    service.internalConsumption(req);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 }

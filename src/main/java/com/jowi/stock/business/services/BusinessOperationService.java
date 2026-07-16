@@ -1,10 +1,13 @@
 package com.jowi.stock.business.services;
 
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import com.jowi.stock.batch.services.ProductBatchService;
+import com.jowi.stock.business.dto.InternalConsumptionRequest;
 import com.jowi.stock.business.dto.PurchaseItemRequest;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.enums.CashActor;
@@ -13,6 +16,7 @@ import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.services.CashMovementService;
+import com.jowi.stock.movement.enums.StockMovementReason;
 import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.services.StockService;
@@ -26,6 +30,21 @@ import com.jowi.stock.cash.enums.CashMovementItemKind;
 @Service
 @Transactional
 public class BusinessOperationService {
+
+  /**
+   * Motivos válidos para un consumo interno. VENTA y COMPRA_PROVEEDOR quedan
+   * excluidos: esos flujos tienen sus propios endpoints e impactan caja.
+   */
+  private static final Set<StockMovementReason> INTERNAL_CONSUMPTION_REASONS =
+      EnumSet.of(
+          StockMovementReason.USO_PERSONAL,
+          StockMovementReason.USO_CAMILLA,
+          StockMovementReason.TRASLADO,
+          StockMovementReason.MUESTRA,
+          StockMovementReason.REGALO,
+          StockMovementReason.PEDIDO_ESPECIAL,
+          StockMovementReason.VENCIMIENTO,
+          StockMovementReason.OTRO);
 
   private final StockService stockService;
   private final CashMovementService cashService;
@@ -69,6 +88,36 @@ public class BusinessOperationService {
             null,
             null,
             null));
+  }
+
+  /**
+   * Consumo interno: descuenta stock (y lotes, vía StockService) SIN generar
+   * movimiento de caja ni venta. Deja trazabilidad en stock_movements con
+   * motivo y comentario (quién lo retiró / destino).
+   *
+   * Casos reales: 1 Labial Vitamina E para uso personal, traslado de
+   * Urban Lait Prodermic SPF 35 al carrito/camilla, pedido Luca.
+   */
+  public void internalConsumption(InternalConsumptionRequest req) {
+
+    if (!INTERNAL_CONSUMPTION_REASONS.contains(req.reason())) {
+      throw new IllegalArgumentException(
+          "Motivo inválido para consumo interno: " + req.reason());
+    }
+
+    // Valida existencia del producto (falla temprano con mensaje claro).
+    var product = productService.getById(req.productId());
+
+    String comment = req.comment() == null || req.comment().isBlank()
+        ? "Consumo interno"
+        : req.comment().trim();
+
+    stockService.decrease(
+        product.getId(),
+        req.context().toStockContext(),
+        req.quantity(),
+        req.reason(),
+        comment);
   }
 
   /**

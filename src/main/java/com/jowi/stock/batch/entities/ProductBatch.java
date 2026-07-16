@@ -42,6 +42,22 @@ public class ProductBatch extends BaseEntity {
   @Column(name = "expiration_date")
   private LocalDate expirationDate;
 
+  /**
+   * true si la fecha de vencimiento fue calculada automáticamente a partir de
+   * la vida útil del producto (Product.shelfLifeMonths) y la fecha de ingreso.
+   * false si el vencimiento es el real, cargado manualmente en la compra.
+   */
+  @Column(name = "expiration_estimated", nullable = false)
+  private Boolean expirationEstimated = false;
+
+  public Boolean getExpirationEstimated() {
+    return expirationEstimated;
+  }
+
+  public void setExpirationEstimated(Boolean expirationEstimated) {
+    this.expirationEstimated = expirationEstimated == null ? Boolean.FALSE : expirationEstimated;
+  }
+
   public Product getProduct() {
     return product;
   }
