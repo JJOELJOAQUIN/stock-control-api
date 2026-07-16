@@ -63,9 +63,9 @@ class SellFlowIntegrationTest {
                 null,
                 new BigDecimal("2000.00"),
                 new BigDecimal("3000.00"),
-                new BigDecimal("50.00")
-                
-        );
+                new BigDecimal("50.00"),
+                null,
+                null);
 
         Product product = productService.create(req);
         UUID productId = product.getId();
