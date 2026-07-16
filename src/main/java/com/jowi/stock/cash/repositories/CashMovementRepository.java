@@ -150,14 +150,19 @@ public interface CashMovementRepository
       @Param("from") java.time.Instant from,
       @Param("to") java.time.Instant to);
 
-  // ===================================================================
-  // Split de producción de la cosmetóloga (procedimiento + producto).
-  // Dos ramas mutuamente excluyentes que luego se suman en el service:
-  //   - FromItems: movimientos CON ítems (venta combinada y, tras Fase 2,
-  //     también ventas simples y procedimientos). Split exacto por kind.
-  //   - Legacy: movimientos SIN ítems (registros viejos que aún guardan el
-  //     split sólo en la cabecera). Se agregan por source como antes.
-  // ===================================================================
+ /**
+   * Producción de la COSMETÓLOGA por ítem.
+   *
+   * El filtro i.cosmetologistShare > 0 es el que define "trabajo de la
+   * cosmetóloga" y NO es opcional: sin él, los ítems propios de la médica
+   * (venta con performedBy = MEDICA, procedimiento 100% médica) entran con
+   * doctorShare = neto completo y la card de la cosmetóloga termina
+   * exponiendo el día entero de la médica.
+   *
+   * El filtro va a nivel ÍTEM y no de movimiento porque una venta combinada
+   * puede mezclar un procedimiento de Gise con una venta de Pili en el mismo
+   * CashMovement: filtrar por la cabecera arrastraría los ítems de la médica.
+   */
 
   @Query("""
         SELECT
@@ -177,6 +182,7 @@ public interface CashMovementRepository
         JOIN c.items i
         WHERE c.type = 'IN'
           AND c.context = :context
+          AND i.cosmetologistShare > 0
           AND c.createdAt >= :from
           AND c.createdAt < :to
       """)
