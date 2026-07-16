@@ -23,4 +23,10 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, UUID
       StockContext context,
       Integer quantityCurrent
   );
+
+  /** Todos los lotes del producto, tengan o no stock. Usado en devoluciones. */
+  List<ProductBatch> findByProductIdAndContext(
+      UUID productId,
+      StockContext context
+  );
 }

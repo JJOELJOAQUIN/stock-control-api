@@ -1,5 +1,7 @@
 package com.jowi.stock.movement.entities;
 
+import java.util.UUID;
+
 import com.jowi.stock.common.BaseEntity;
 import com.jowi.stock.movement.enums.StockMovementReason;
 import com.jowi.stock.movement.enums.StockMovementType;
@@ -13,7 +15,8 @@ import jakarta.validation.constraints.NotNull;
 @Entity
 @Table(name = "stock_movements", indexes = {
     @Index(name = "idx_stock_movements_product_context", columnList = "product_id, context"),
-    @Index(name = "idx_stock_movements_type", columnList = "type")
+    @Index(name = "idx_stock_movements_type", columnList = "type"),
+    @Index(name = "idx_stock_movements_cash_movement", columnList = "cash_movement_id")
 })
 
 public class StockMovement extends BaseEntity {
@@ -45,6 +48,18 @@ public class StockMovement extends BaseEntity {
   @Column(nullable = false, length = 20)
   private StockContext context;
 
+  /**
+   * Movimiento de caja que originó esta salida/entrada de stock, cuando
+   * existe. Es un UUID suelto y no una @ManyToOne a propósito: el módulo de
+   * stock no depende del de caja, y un movimiento de stock puede no tener
+   * caja detrás (consumo interno, ajuste, stock inicial).
+   *
+   * Nulo en todos los movimientos anteriores a esta versión: por eso la
+   * anulación tiene rama legacy que reconstruye desde cash_movement_items.
+   */
+  @Column(name = "cash_movement_id")
+  private UUID cashMovementId;
+
   /* getters */
 
   public StockContext getContext() {
@@ -71,6 +86,10 @@ public class StockMovement extends BaseEntity {
     return comment;
   }
 
+  public UUID getCashMovementId() {
+    return cashMovementId;
+  }
+
   /* setters */
 
   public void setProduct(Product product) {
@@ -95,5 +114,9 @@ public class StockMovement extends BaseEntity {
 
   public void setContext(StockContext context) {
     this.context = context;
+  }
+
+  public void setCashMovementId(UUID cashMovementId) {
+    this.cashMovementId = cashMovementId;
   }
 }

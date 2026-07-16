@@ -15,7 +15,10 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
+import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.services.CashMovementService;
+import com.jowi.stock.movement.entities.StockMovement;
+import com.jowi.stock.movement.services.StockMovementService;
 import com.jowi.stock.movement.enums.StockMovementReason;
 import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
@@ -50,16 +53,19 @@ public class BusinessOperationService {
   private final CashMovementService cashService;
   private final ProductService productService;
   private final ProductBatchService batchService;
+  private final StockMovementService stockMovementService;
 
   public BusinessOperationService(
       StockService stockService,
       CashMovementService cashService,
       ProductService productService,
-      ProductBatchService batchService) {
+      ProductBatchService batchService,
+      StockMovementService stockMovementService) {
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
     this.batchService = batchService;
+    this.stockMovementService = stockMovementService;
   }
 
   public void sellProduct(
@@ -72,9 +78,13 @@ public class BusinessOperationService {
 
     var product = productService.getById(productId);
 
-    stockService.decrease(productId, context.toStockContext(), quantity);
+    // El stock se descuenta ANTES de tocar la caja: si no alcanza, no
+    // queremos haber registrado plata. Por eso el link al movimiento de
+    // caja se completa despues, ya dentro de la misma transaccion.
+    StockMovement stockMovement =
+        stockService.decrease(productId, context.toStockContext(), quantity);
 
-    cashService.create(
+    CashMovement cashMovement = cashService.create(
         new CreateCashMovementRequest(
             CashMovementType.IN,
             CashSource.PRODUCT_SALE,
@@ -88,6 +98,9 @@ public class BusinessOperationService {
             null,
             null,
             null));
+
+    stockMovementService.linkToCashMovement(
+        stockMovement.getId(), cashMovement.getId());
   }
 
   /**
@@ -255,9 +268,10 @@ public class BusinessOperationService {
       stockService.initStock(product.getId(), stockContext, 0);
     }
 
-    stockService.decrease(product.getId(), stockContext, quantity);
+    StockMovement stockMovement =
+        stockService.decrease(product.getId(), stockContext, quantity);
 
-    cashService.create(
+    CashMovement cashMovement = cashService.create(
         new CreateCashMovementRequest(
             CashMovementType.IN,
             CashSource.PRODUCT_SALE,
@@ -271,6 +285,9 @@ public class BusinessOperationService {
             null,
             null,
             performedBy));
+
+    stockMovementService.linkToCashMovement(
+        stockMovement.getId(), cashMovement.getId());
   }
 
   /**
@@ -286,6 +303,7 @@ public class BusinessOperationService {
 
     StockContext stockContext = req.context().toStockContext();
     List<CombinedItemLine> lines = new ArrayList<>();
+    List<UUID> stockMovementIds = new ArrayList<>();
 
     for (CombinedSaleItemRequest item : req.items()) {
       if (item.quantity() <= 0) {
@@ -315,7 +333,9 @@ public class BusinessOperationService {
         if (!stockService.exists(item.productId(), stockContext)) {
           stockService.initStock(item.productId(), stockContext, 0);
         }
-        stockService.decrease(item.productId(), stockContext, item.quantity());
+        StockMovement stockMovement =
+            stockService.decrease(item.productId(), stockContext, item.quantity());
+        stockMovementIds.add(stockMovement.getId());
 
         lines.add(new CombinedItemLine(
             CashMovementItemKind.PRODUCT,
@@ -337,6 +357,13 @@ public class BusinessOperationService {
             ? item.procedureCode()
             : item.description();
 
+        // Autoria del procedimiento: la del item si vino, si no la de la
+        // cabecera. Sin esto no hay forma de distinguir un procedimiento
+        // hecho por Gise con 0% para ella de uno propio de Pili.
+        CashActor procedurePerformer = item.performedBy() != null
+            ? item.performedBy()
+            : req.performedBy();
+
         lines.add(new CombinedItemLine(
             CashMovementItemKind.PROCEDURE,
             null,
@@ -345,7 +372,7 @@ public class BusinessOperationService {
             item.quantity(),
             item.unitAmount(),
             item.subtotal(),
-            null,
+            procedurePerformer,
             item.doctorSharePercent(),
             item.cosmetologistSharePercent()));
 
@@ -354,11 +381,13 @@ public class BusinessOperationService {
       }
     }
 
-    cashService.createCombined(
+    CashMovement cashMovement = cashService.createCombined(
         req.context(),
         req.paymentMethod(),
         req.comment(),
         req.expectedTotal(),
         lines);
+
+    stockMovementService.linkToCashMovement(stockMovementIds, cashMovement.getId());
   }
 }

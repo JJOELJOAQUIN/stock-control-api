@@ -1,6 +1,7 @@
 package com.jowi.stock.movement.repositories;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,12 @@ public interface StockMovementRepository
 
     // ===== Listado por producto =====
     Page<StockMovement> findByProduct_Id(UUID productId, Pageable pageable);
+
+    // ===== Trazabilidad caja -> stock =====
+    // Usado por la anulación para saber qué salidas de stock generó una venta.
+    List<StockMovement> findByCashMovementIdOrderByCreatedAtAsc(UUID cashMovementId);
+
+    boolean existsByCashMovementId(UUID cashMovementId);
 
     // ===== KPIs =====
     long countByType(StockMovementType type);

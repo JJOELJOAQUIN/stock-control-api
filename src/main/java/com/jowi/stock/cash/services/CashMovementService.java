@@ -497,6 +497,11 @@ public class CashMovementService {
       item.setQuantity(line.quantity());
       item.setUnitAmount(line.unitAmount().setScale(2, RoundingMode.HALF_UP));
       item.setSubtotal(line.subtotal().setScale(2, RoundingMode.HALF_UP));
+      // Autoria del trabajo. Se guarda siempre, no solo en consultorio: es
+      // un hecho del negocio, no un detalle del calculo de shares. Antes
+      // este dato se usaba para calcular los montos y se perdia, y habia
+      // que inferir quien hizo el trabajo a partir de cuanto cobro.
+      item.setPerformedBy(line.performedBy());
 
       if (consultorio) {
         BigDecimal[] shares = resolveItemShares(line, itemNet);

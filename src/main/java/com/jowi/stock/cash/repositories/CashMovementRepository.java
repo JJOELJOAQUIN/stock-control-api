@@ -150,20 +150,33 @@ public interface CashMovementRepository
       @Param("from") java.time.Instant from,
       @Param("to") java.time.Instant to);
 
- /**
-   * Producción de la COSMETÓLOGA por ítem.
-   *
-   * El filtro i.cosmetologistShare > 0 es el que define "trabajo de la
-   * cosmetóloga" y NO es opcional: sin él, los ítems propios de la médica
-   * (venta con performedBy = MEDICA, procedimiento 100% médica) entran con
-   * doctorShare = neto completo y la card de la cosmetóloga termina
-   * exponiendo el día entero de la médica.
-   *
-   * El filtro va a nivel ÍTEM y no de movimiento porque una venta combinada
-   * puede mezclar un procedimiento de Gise con una venta de Pili en el mismo
-   * CashMovement: filtrar por la cabecera arrastraría los ítems de la médica.
-   */
+  // ===================================================================
+  // Split de producción de la cosmetóloga (procedimiento + producto).
+  // Dos ramas mutuamente excluyentes que luego se suman en el service:
+  //   - FromItems: movimientos CON ítems (venta combinada y, tras Fase 2,
+  //     también ventas simples y procedimientos). Split exacto por kind.
+  //   - Legacy: movimientos SIN ítems (registros viejos que aún guardan el
+  //     split sólo en la cabecera). Se agregan por source como antes.
+  // ===================================================================
 
+  /**
+   * Produccion de la COSMETOLOGA por item: solo lo que hizo ella, con el
+   * reparto de ese trabajo entre las dos.
+   *
+   * El filtro de autoria NO es opcional: sin el, los items propios de la
+   * medica entran con doctorShare = neto completo y la card de la
+   * cosmetologa termina exponiendo el dia entero de la medica.
+   *
+   * Va a nivel ITEM y no de movimiento porque una venta combinada puede
+   * mezclar un procedimiento de Gise con una venta de Pili en el mismo
+   * CashMovement: filtrar por la cabecera arrastraria los items de la medica.
+   *
+   * Rama hibrida, mismo criterio que el resto del sistema:
+   *  - Items nuevos: performedBy dice quien lo hizo. Es el dato real.
+   *  - Items viejos sin backfill posible (procedimientos con 0% para la
+   *    cosmetologa): se cae al criterio anterior por monto, que es
+   *    exactamente lo que ya se venia mostrando para esos registros.
+   */
   @Query("""
         SELECT
           COALESCE(SUM(CASE
@@ -182,7 +195,10 @@ public interface CashMovementRepository
         JOIN c.items i
         WHERE c.type = 'IN'
           AND c.context = :context
-          AND i.cosmetologistShare > 0
+          AND (
+                i.performedBy = com.jowi.stock.cash.enums.CashActor.COSMETOLOGA
+             OR (i.performedBy IS NULL AND i.cosmetologistShare > 0)
+              )
           AND c.createdAt >= :from
           AND c.createdAt < :to
       """)

@@ -1,6 +1,8 @@
 package com.jowi.stock.stock.services;
 
+import com.jowi.stock.batch.dto.BatchAllocation;
 import com.jowi.stock.batch.services.ProductBatchService;
+import com.jowi.stock.movement.entities.StockMovement;
 import com.jowi.stock.movement.enums.StockMovementReason;
 import com.jowi.stock.movement.enums.StockMovementType;
 import com.jowi.stock.movement.services.StockMovementService;
@@ -99,6 +101,22 @@ public class StockService {
   }
 
   public void increase(UUID productId, StockContext context, int qty) {
+    increase(productId, context, qty, StockMovementReason.COMPRA_PROVEEDOR,
+        "Ingreso de stock", List.of());
+  }
+
+  /**
+   * Entrada de stock con motivo explícito y trazabilidad opcional de lotes.
+   * Las allocations se usan al revertir una venta: cada unidad vuelve al lote
+   * del que salió, y queda registrado que volvió.
+   */
+  public StockMovement increase(
+      UUID productId,
+      StockContext context,
+      int qty,
+      StockMovementReason reason,
+      String comment,
+      List<BatchAllocation> allocations) {
 
     validateQty(qty);
 
@@ -109,13 +127,14 @@ public class StockService {
 
     stockRepository.save(productId, context, stock.getCurrent() + qty);
 
-    movementService.register(
+    return movementService.register(
         productId,
         context,
         StockMovementType.IN,
         qty,
-        StockMovementReason.COMPRA_PROVEEDOR,
-        "Ingreso de stock");
+        reason,
+        comment,
+        allocations == null ? List.of() : allocations);
   }
 
   public List<LowStockResponse> getBelowMinimum(StockContext context) {
@@ -130,8 +149,8 @@ public class StockService {
    * Salida de stock por venta (comportamiento histórico, sin cambios de
    * firma para no romper llamadas existentes).
    */
-  public void decrease(UUID productId, StockContext context, int qty) {
-    decrease(productId, context, qty, StockMovementReason.VENTA, "Salida de stock");
+  public StockMovement decrease(UUID productId, StockContext context, int qty) {
+    return decrease(productId, context, qty, StockMovementReason.VENTA, "Salida de stock");
   }
 
   /**
@@ -140,9 +159,13 @@ public class StockService {
    * TRASLADO, MUESTRA, REGALO, PEDIDO_ESPECIAL, OTRO).
    *
    * Además de descontar el stock, consume los lotes en orden FEFO para que
-   * los avisos de vencimiento reflejen solo lotes con existencia real.
+   * los avisos de vencimiento reflejen solo lotes con existencia real, y deja
+   * registrado de qué lote salió cada unidad para poder revertirlo después.
+   *
+   * Devuelve el movimiento creado: quien llama puede atarlo a un movimiento
+   * de caja con {@code movementService.linkToCashMovement}.
    */
-  public void decrease(
+  public StockMovement decrease(
       UUID productId,
       StockContext context,
       int qty,
@@ -171,15 +194,16 @@ public class StockService {
     // Mantiene los lotes sincronizados con el stock (fix NCTF 130 HA:
     // antes los lotes nunca se descontaban y seguían apareciendo como
     // próximos a vencer aunque el producto ya no tuviera stock).
-    batchService.consume(productId, context, qty);
+    List<BatchAllocation> allocations = batchService.consume(productId, context, qty);
 
-    movementService.register(
+    return movementService.register(
         productId,
         context,
         StockMovementType.OUT,
         qty,
         reason,
-        comment);
+        comment,
+        allocations);
   }
 
   public boolean exists(UUID productId, StockContext context) {
