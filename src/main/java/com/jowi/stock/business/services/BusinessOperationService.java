@@ -91,13 +91,16 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             amount,
-            null,
+            null,              // retentionPercent
             comment,
-            product.getName(),
-            productId,
-            null,
-            null,
-            null));
+            product.getName(), // detail
+            productId,         // referenceId
+            null,              // doctorSharePercent
+            null,              // cosmetologistSharePercent
+            null,              // performedBy
+            null,              // procedureCode
+            null,              // splitPreset
+            null));            // peelingPaymentKind
 
     stockMovementService.linkToCashMovement(
         stockMovement.getId(), cashMovement.getId());
@@ -186,13 +189,16 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             computedTotal,
-            BigDecimal.ZERO,
+            BigDecimal.ZERO, // retentionPercent
             comment,
-            null,
-            null,
-            null,
-            null,
-            null));
+            null,            // detail
+            null,            // referenceId
+            null,            // doctorSharePercent
+            null,            // cosmetologistSharePercent
+            null,            // performedBy
+            null,            // procedureCode
+            null,            // splitPreset
+            null));          // peelingPaymentKind
   }
 
   /**
@@ -278,13 +284,16 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             amount,
-            null,
+            null,              // retentionPercent
             comment,
-            product.getName(),
-            product.getId(),
-            null,
-            null,
-            performedBy));
+            product.getName(), // detail
+            product.getId(),   // referenceId
+            null,              // doctorSharePercent
+            null,              // cosmetologistSharePercent
+            performedBy,
+            null,              // procedureCode
+            null,              // splitPreset
+            null));            // peelingPaymentKind
 
     stockMovementService.linkToCashMovement(
         stockMovement.getId(), cashMovement.getId());
@@ -295,6 +304,10 @@ public class BusinessOperationService {
    * (no tocan stock) en una única operación. Genera un solo CashMovement con
    * N ítems. Corre en la transacción de la clase: si algo falla, se revierte
    * el stock descontado y no se crea el movimiento.
+   *
+   * El peeling profundo no pasa por acá: está excluido del carrito a propósito
+   * y tiene su propio flujo por la card de procedimientos, que es donde vive
+   * el reparto configurable.
    */
   public void combinedSale(CombinedSaleRequest req) {
     if (req.items() == null || req.items().isEmpty()) {

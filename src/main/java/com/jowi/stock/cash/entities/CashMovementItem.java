@@ -2,6 +2,7 @@ package com.jowi.stock.cash.entities;
 
 import com.jowi.stock.cash.enums.CashActor;
 import com.jowi.stock.cash.enums.CashMovementItemKind;
+import com.jowi.stock.cash.enums.SplitPreset;
 import com.jowi.stock.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -66,6 +67,19 @@ public class CashMovementItem extends BaseEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "performed_by", length = 20)
   private CashActor performedBy;
+
+  /**
+   * Reparto aplicado, sólo para el protocolo de peeling profundo. NULL en
+   * todo lo demás: los ítems PRODUCT no lo usan y el resto del catálogo de
+   * procedimientos no admite desvíos.
+   *
+   * Vale NORMAL cuando se cobró como corresponde. Los otros valores marcan
+   * un desvío deliberado, y son la única traza de que hubo una deuda entre
+   * Pili y Gise saldándose adentro de ese pago.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "split_preset", length = 20)
+  private SplitPreset splitPreset;
 
   @Column(name = "doctor_share", precision = 18, scale = 2)
   private BigDecimal doctorShare;
@@ -145,6 +159,14 @@ public class CashMovementItem extends BaseEntity {
 
   public void setPerformedBy(CashActor performedBy) {
     this.performedBy = performedBy;
+  }
+
+  public SplitPreset getSplitPreset() {
+    return splitPreset;
+  }
+
+  public void setSplitPreset(SplitPreset splitPreset) {
+    this.splitPreset = splitPreset;
   }
 
   public BigDecimal getDoctorShare() {
