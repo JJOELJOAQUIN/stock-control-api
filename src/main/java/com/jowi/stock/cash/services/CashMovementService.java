@@ -17,10 +17,10 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
-import com.jowi.stock.cash.enums.PeelingPaymentKind;
 import com.jowi.stock.cash.enums.SplitPreset;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.cash.specifications.CashMovementSpecifications;
+import com.jowi.stock.cash.dto.CashItemSpec;
 import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.entities.CashMovementItem;
 import java.util.List;
@@ -32,14 +32,6 @@ public class CashMovementService {
 
   private static final BigDecimal DEFAULT_CARD_RETENTION = new BigDecimal("0.30");
   private static final BigDecimal COSMETOLOGIST_PRODUCT_PERCENT = new BigDecimal("0.05");
-
-  /**
-   * Único procedimiento que admite un reparto distinto al de su regla propia.
-   * Es una constante y no una tabla porque hoy es un caso único y explícito:
-   * el día que sean dos, esto pide una columna en el catálogo, no un if más.
-   */
-  private static final String PEELING_PROTOCOLO_CODE = "PEELING_PROFUNDO_PROTOCOLO";
-
   private final CashMovementRepository repository;
 
   public CashMovementService(CashMovementRepository repository) {
@@ -66,11 +58,6 @@ public class CashMovementService {
 
     if (req.context() == null)
       throw new IllegalArgumentException("context is required");
-
-    // Reparto solicitado. Null = NORMAL, para que todo el resto del sistema
-    // (y cualquier cliente viejo) siga funcionando sin mandar el campo.
-    SplitPreset preset = req.splitPreset() == null ? SplitPreset.NORMAL : req.splitPreset();
-    validateSplitPreset(preset, req);
 
     BigDecimal percent = resolveRetentionPercent(
         req.paymentMethod(),
@@ -99,9 +86,31 @@ public class CashMovementService {
     if (req.source() == CashSource.PROCEDURE &&
         req.context() == CashContext.CONSULTORIO) {
 
-      BigDecimal[] shares = resolveProcedureShares(req, preset, net);
-      m.setDoctorShare(shares[0]);
-      m.setCosmetologistShare(shares[1]);
+      BigDecimal doctorPercent = req.doctorSharePercent();
+      BigDecimal cosmetologistPercent = req.cosmetologistSharePercent();
+
+      if (doctorPercent == null || cosmetologistPercent == null) {
+        throw new IllegalArgumentException(
+            "doctorSharePercent and cosmetologistSharePercent are required for procedure income");
+      }
+
+      BigDecimal total = doctorPercent.add(cosmetologistPercent);
+
+      if (total.compareTo(BigDecimal.ONE) != 0) {
+        throw new IllegalArgumentException(
+            "doctorSharePercent + cosmetologistSharePercent must equal 1");
+      }
+
+      BigDecimal doctorShare = net
+          .multiply(doctorPercent)
+          .setScale(2, RoundingMode.HALF_UP);
+
+      BigDecimal cosmetologistShare = net
+          .subtract(doctorShare)
+          .setScale(2, RoundingMode.HALF_UP);
+
+      m.setDoctorShare(doctorShare);
+      m.setCosmetologistShare(cosmetologistShare);
     }
 
     if (req.source() == CashSource.PRODUCT_SALE &&
@@ -120,7 +129,7 @@ public class CashMovementService {
 
       if (req.performedBy() == CashActor.COSMETOLOGA) {
         BigDecimal cosmetologistShare = net
-            .multiply(COSMETOLOGIST_PRODUCT_PERCENT)
+            .multiply(new BigDecimal("0.05"))
             .setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal doctorShare = net
@@ -144,14 +153,13 @@ public class CashMovementService {
               ? com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
               : com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE);
 
-      // En PRODUCT_SALE el referenceId es el productId; en PROCEDURE guardamos
-      // el código real del procedimiento, que antes se perdía (quedaba null y
-      // sólo sobrevivía como texto en detail).
+      // En PRODUCT_SALE el referenceId es el productId; en PROCEDURE no aplica.
       if (req.source() == CashSource.PRODUCT_SALE) {
         mirror.setProductId(req.referenceId());
       } else {
-        mirror.setProcedureCode(req.procedureCode());
-        mirror.setSplitPreset(preset);
+        // Código de procedimiento: usamos el detail como identificador legible.
+        // (No hay un code estructurado en este request legacy.)
+        mirror.setProcedureCode(null);
       }
 
       String description = (req.detail() != null && !req.detail().isBlank())
@@ -170,13 +178,6 @@ public class CashMovementService {
       mirror.setUnitAmount(m.getAmount());
       mirror.setSubtotal(m.getAmount());
 
-      // Autoría del trabajo. Antes no se seteaba nunca en este camino, así que
-      // todo lo cargado desde las cards de procedimiento y de venta de producto
-      // quedaba en NULL y la query tenía que caer al criterio por monto. Eso
-      // funciona mientras quien hizo el trabajo cobre algo; se rompe justo en
-      // el caso que este feature habilita (Gise hace el peeling y cobra 0).
-      mirror.setPerformedBy(req.performedBy());
-
       // Copiamos el split ya resuelto en la cabecera (null en LOCAL).
       mirror.setDoctorShare(m.getDoctorShare());
       mirror.setCosmetologistShare(m.getCosmetologistShare());
@@ -188,86 +189,14 @@ public class CashMovementService {
   }
 
   /**
-   * El preset es una excepción acotada al peeling profundo. Se valida acá y no
-   * en el front porque el front puede mandar cualquier cosa, y esto mueve plata
-   * de una persona a la otra.
-   */
-  private void validateSplitPreset(SplitPreset preset, CreateCashMovementRequest req) {
-    if (preset == SplitPreset.NORMAL) {
-      return;
-    }
-
-    if (req.source() != CashSource.PROCEDURE
-        || !PEELING_PROTOCOLO_CODE.equals(req.procedureCode())) {
-      throw new IllegalArgumentException(
-          "El reparto configurable sólo aplica a peeling profundo");
-    }
-
-    // "Todo a Gise" existe para un caso concreto: la primera cuota que ella se
-    // cobra entera para saldar arreglos previos. En un pago completo el mismo
-    // preset significaría una deuda de $130.000 en vez de $45.000, y no hay
-    // nada en el registro que después permita distinguir cuál de las dos era.
-    if (preset == SplitPreset.TODO_COSMETOLOGA
-        && req.peelingPaymentKind() != PeelingPaymentKind.FIRST) {
-      throw new IllegalArgumentException(
-          "\"Todo a Gise\" sólo aplica a la primera cuota del peeling");
-    }
-  }
-
-  /**
-   * Resuelve [doctorShare, cosmetologistShare] de un procedimiento sobre el neto.
-   *
-   * El preset gana sobre los porcentajes del request: si el front manda
-   * TODO_COSMETOLOGA con percents 70/30, vale el preset. Una sola fuente de
-   * verdad, y es el backend.
-   */
-  private BigDecimal[] resolveProcedureShares(
-      CreateCashMovementRequest req,
-      SplitPreset preset,
-      BigDecimal net) {
-
-    BigDecimal zero = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
-
-    if (preset == SplitPreset.TODO_COSMETOLOGA) {
-      return new BigDecimal[] { zero, net };
-    }
-    if (preset == SplitPreset.TODO_MEDICA) {
-      return new BigDecimal[] { net, zero };
-    }
-
-    BigDecimal doctorPercent = req.doctorSharePercent();
-    BigDecimal cosmetologistPercent = req.cosmetologistSharePercent();
-
-    if (doctorPercent == null || cosmetologistPercent == null) {
-      throw new IllegalArgumentException(
-          "doctorSharePercent and cosmetologistSharePercent are required for procedure income");
-    }
-
-    BigDecimal total = doctorPercent.add(cosmetologistPercent);
-
-    if (total.compareTo(BigDecimal.ONE) != 0) {
-      throw new IllegalArgumentException(
-          "doctorSharePercent + cosmetologistSharePercent must equal 1");
-    }
-
-    BigDecimal doctorShare = net
-        .multiply(doctorPercent)
-        .setScale(2, RoundingMode.HALF_UP);
-
-    BigDecimal cosmetologistShare = net
-        .subtract(doctorShare)
-        .setScale(2, RoundingMode.HALF_UP);
-
-    return new BigDecimal[] { doctorShare, cosmetologistShare };
-  }
-
-  /**
    * Crea un movimiento de caja con los shares (doctor/cosmetóloga) dados en
    * MONTO, no en porcentaje. Útil cuando el reparto es fijo (ej: la
    * cosmetóloga cobra $40.000 netos garantizados, sin importar la retención).
    *
    * La retención y el neto se calculan igual que en {@link #create}. Los
    * shares se aplican sobre el neto y deben sumar exactamente el neto.
+   *
+   * @param itemSpec datos del ítem espejo; null = no generar ítem.
    */
   public CashMovement createWithFixedShares(
       CashMovementType type,
@@ -279,7 +208,8 @@ public class CashMovementService {
       String comment,
       java.util.UUID referenceId,
       BigDecimal doctorShareAmount,
-      BigDecimal cosmetologistShareAmount) {
+      BigDecimal cosmetologistShareAmount,
+      CashItemSpec itemSpec) {
 
     if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
       throw new IllegalArgumentException("amount must be > 0");
@@ -328,6 +258,39 @@ public class CashMovementService {
     m.setReferenceId(referenceId);
     m.setDoctorShare(doctorShare);
     m.setCosmetologistShare(cosmetologistShare);
+
+    // Item espejo. Antes este camino no generaba ninguno, asi que los pagos de
+    // tratamiento quedaban como un CashMovement sin filas en
+    // cash_movement_items, y solo los levantaba la rama legacy de las queries
+    // -- la que filtra por cosmetologistShare > 0. Por eso un pago donde la
+    // cosmetologa cobra 0 desaparecia de su card aunque el trabajo fuera de
+    // ella. El item con performed_by es lo que lo arregla.
+    if (itemSpec != null) {
+      CashMovementItem mirror = new CashMovementItem();
+      mirror.setKind(itemSpec.kind());
+      mirror.setProductId(itemSpec.productId());
+      mirror.setProcedureCode(itemSpec.procedureCode());
+      mirror.setPerformedBy(itemSpec.performedBy());
+      mirror.setSplitPreset(itemSpec.splitPreset());
+
+      String description = (itemSpec.description() != null && !itemSpec.description().isBlank())
+          ? itemSpec.description()
+          : (comment != null && !comment.isBlank() ? comment : "Pago");
+      mirror.setDescription(description.length() > 200
+          ? description.substring(0, 197) + "..."
+          : description);
+
+      mirror.setQuantity(1);
+      mirror.setUnitAmount(grossAmount);
+      mirror.setSubtotal(grossAmount);
+
+      // Los shares se copian de la cabecera: no hay recalculo posible, el
+      // movimiento es de un solo item.
+      mirror.setDoctorShare(doctorShare);
+      mirror.setCosmetologistShare(cosmetologistShare);
+
+      m.addItem(mirror);
+    }
 
     return repository.save(m);
   }
@@ -495,10 +458,6 @@ public class CashMovementService {
    *
    * El split (doctor/cosmetóloga) sólo se calcula en CONSULTORIO; en LOCAL los
    * ítems se guardan sin shares.
-   *
-   * Nota: el peeling profundo NO pasa por acá. Tiene su propio flujo (la card
-   * de procedimientos) y está excluido del carrito a propósito, así que el
-   * reparto configurable vive en create() y no en este método.
    */
   public CashMovement createCombined(
       CashContext context,

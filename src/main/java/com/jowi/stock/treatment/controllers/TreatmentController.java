@@ -79,7 +79,7 @@ public class TreatmentController {
             @PathVariable UUID treatmentId,
             @RequestBody RegisterPaymentRequest req) {
         var payment = service.registerPayment(
-                treatmentId, req.amount(), req.paymentMethod(), req.context());
+                treatmentId, req.amount(), req.paymentMethod(), req.context(), req.splitPreset());
         return ResponseEntity.status(HttpStatus.CREATED).body(PaymentResponse.from(payment));
     }
 

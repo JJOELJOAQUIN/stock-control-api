@@ -12,6 +12,10 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
+import com.jowi.stock.cash.dto.CashItemSpec;
+import com.jowi.stock.cash.enums.CashActor;
+import com.jowi.stock.cash.enums.CashMovementItemKind;
+import com.jowi.stock.cash.enums.SplitPreset;
 import com.jowi.stock.cash.services.CashMovementService;
 import com.jowi.stock.patient.entities.Patient;
 import com.jowi.stock.treatment.entities.Payment;
@@ -26,6 +30,13 @@ import jakarta.transaction.Transactional;
 @Service
 @Transactional
 public class TreatmentService {
+
+  /**
+   * Único tratamiento que admite un reparto distinto al suyo propio. Es una
+   * constante y no una columna porque hoy es el único código que existe: el
+   * día que sean dos, esto pide una bandera en Treatment, no un if más.
+   */
+  private static final String PEELING_PROTOCOLO_CODE = "PEELING_PROFUNDO_PROTOCOLO";
 
   private final PatientRepository patientRepository;
   private final TreatmentRepository treatmentRepository;
@@ -142,7 +153,8 @@ public class TreatmentService {
       UUID treatmentId,
       BigDecimal amount,
       PaymentMethod paymentMethod,
-      CashContext context) {
+      CashContext context,
+      SplitPreset splitPreset) {
 
     Treatment t = getTreatment(treatmentId);
 
@@ -169,46 +181,69 @@ public class TreatmentService {
 
     boolean isFirst = nextInstallment == 1;
     BigDecimal net = cashService.computeNet(amountScaled, paymentMethod);
+    BigDecimal zero = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
-    CashMovement movement;
-    if (isFirst && t.getCosmetologistFixedShare() != null
+    // Null = NORMAL, para que cualquier cliente que no mande el campo cobre
+    // exactamente como cobraba antes de este feature.
+    SplitPreset preset = splitPreset == null ? SplitPreset.NORMAL : splitPreset;
+    validateSplitPreset(preset, t, context, isFirst);
+
+    BigDecimal cosmoShare;
+    BigDecimal doctorShare;
+
+    if (preset == SplitPreset.TODO_COSMETOLOGA) {
+      cosmoShare = net;
+      doctorShare = zero;
+
+    } else if (preset == SplitPreset.TODO_MEDICA) {
+      cosmoShare = zero;
+      doctorShare = net;
+
+    } else if (isFirst && t.getCosmetologistFixedShare() != null
         && context == CashContext.CONSULTORIO) {
 
-      BigDecimal cosmoShare = t.getCosmetologistFixedShare();
+      cosmoShare = t.getCosmetologistFixedShare();
 
       if (cosmoShare.compareTo(net) > 0)
         throw new IllegalStateException(
             "El monto fijo de la cosmetóloga (" + cosmoShare
                 + ") supera el neto del pago (" + net + ")");
 
-      BigDecimal doctorShare = net.subtract(cosmoShare).setScale(2, RoundingMode.HALF_UP);
-
-      movement = cashService.createWithFixedShares(
-          CashMovementType.IN,
-          CashSource.PROCEDURE,
-          paymentMethod,
-          context,
-          amountScaled,
-          null,
-          "Pago 1 - " + t.getDescription(),
-          treatmentId,
-          doctorShare,
-          cosmoShare);
+      doctorShare = net.subtract(cosmoShare).setScale(2, RoundingMode.HALF_UP);
 
     } else {
       // Segundo pago (o sin fijo): todo a la médica.
-      movement = cashService.createWithFixedShares(
-          CashMovementType.IN,
-          CashSource.PROCEDURE,
-          paymentMethod,
-          context,
-          amountScaled,
-          null,
-          "Pago " + nextInstallment + " - " + t.getDescription(),
-          treatmentId,
-          net,
-          BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
+      cosmoShare = zero;
+      doctorShare = net;
     }
+
+    String comment = buildPaymentComment(nextInstallment, t.getDescription(), preset);
+
+    // La autoría no depende del reparto: el peeling lo hace Gise aunque en
+    // este pago cobre 0. Es justamente el caso que este feature arregla, y sin
+    // el performedBy del ítem el movimiento se le cae de la card.
+    CashActor performedBy = PEELING_PROTOCOLO_CODE.equals(t.getCode())
+        ? CashActor.COSMETOLOGA
+        : CashActor.MEDICA;
+
+    CashMovement movement = cashService.createWithFixedShares(
+        CashMovementType.IN,
+        CashSource.PROCEDURE,
+        paymentMethod,
+        context,
+        amountScaled,
+        null,
+        comment,
+        treatmentId,
+        doctorShare,
+        cosmoShare,
+        new CashItemSpec(
+            CashMovementItemKind.PROCEDURE,
+            null,
+            t.getCode(),
+            t.getDescription(),
+            performedBy,
+            preset));
 
     Payment payment = new Payment();
     payment.setAmount(amountScaled);
@@ -235,5 +270,49 @@ public class TreatmentService {
       return treatmentRepository.findAllByOrderByStatusAscCreatedAtDesc();
     }
     return treatmentRepository.findByStatusIn(List.of(status));
+  }
+
+  /**
+   * El desvío es una excepción acotada al peeling. Se valida en el backend
+   * porque mueve plata de una persona a la otra, y el front no es fuente de
+   * verdad de eso.
+   */
+  private void validateSplitPreset(
+      SplitPreset preset, Treatment t, CashContext context, boolean isFirst) {
+
+    if (preset == SplitPreset.NORMAL)
+      return;
+
+    if (!PEELING_PROTOCOLO_CODE.equals(t.getCode()))
+      throw new IllegalArgumentException(
+          "El reparto configurable sólo aplica a peeling profundo");
+
+    if (context != CashContext.CONSULTORIO)
+      throw new IllegalArgumentException(
+          "El reparto configurable sólo aplica en consultorio");
+
+    // "Todo a Gise" existe para un caso concreto: la primera cuota que ella se
+    // cobra entera para saldar arreglos previos con Pili. En un pago completo
+    // el mismo preset significaría una deuda del doble, y después no habría
+    // forma de distinguir en el registro cuál de las dos era.
+    if (preset == SplitPreset.TODO_COSMETOLOGA && !isFirst)
+      throw new IllegalStateException(
+          "\"Todo a Gise\" sólo aplica a la primera cuota del peeling");
+  }
+
+  /**
+   * El dato duro es split_preset; el comment es para que la que abre la caja
+   * en el celular entienda por qué ese pago se repartió distinto.
+   */
+  private String buildPaymentComment(int installment, String description, SplitPreset preset) {
+    String base = "Pago " + installment + " - " + description;
+
+    if (preset == SplitPreset.TODO_COSMETOLOGA)
+      return "Reparto: Todo a Gise · " + base;
+
+    if (preset == SplitPreset.TODO_MEDICA)
+      return "Reparto: Todo a Pili · " + base;
+
+    return base;
   }
 }
