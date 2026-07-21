@@ -1,10 +1,13 @@
 package com.jowi.stock.cash.specifications;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import org.springframework.data.jpa.domain.Specification;
 
 import com.jowi.stock.cash.entities.CashMovement;
+import com.jowi.stock.cash.entities.CashMovementItem;
+import com.jowi.stock.cash.enums.CashActor;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
@@ -59,6 +62,31 @@ public final class CashMovementSpecifications {
       return cb.or(
           cb.like(cb.lower(cb.coalesce(root.get("comment"), "")), like),
           cb.like(cb.lower(cb.coalesce(root.get("detail"), "")), like));
+    };
+  }
+
+  /**
+   * Movimientos que le corresponden a la cosmetóloga: los que tienen un ítem
+   * con performed_by = COSMETOLOGA, o —para lo anterior a la trazabilidad de
+   * autoría— los que le repartieron algo (cosmetologist_share > 0 en la
+   * cabecera). Es el mismo criterio híbrido que usan las queries de
+   * producción de su card, aplicado al listado.
+   *
+   * Con el ítem espejo, un peeling "Todo a Pili" entra por la primera rama
+   * aunque ella cobre 0: el trabajo fue de ella y tiene que poder verlo.
+   * Compras, egresos y ventas 100% de la médica quedan afuera.
+   */
+  public static Specification<CashMovement> visibleToCosmetologist() {
+    return (root, query, cb) -> {
+      var sub = query.subquery(Integer.class);
+      var item = sub.from(CashMovementItem.class);
+      sub.select(cb.literal(1)).where(
+          cb.equal(item.get("cashMovement"), root),
+          cb.equal(item.get("performedBy"), CashActor.COSMETOLOGA));
+
+      return cb.or(
+          cb.exists(sub),
+          cb.greaterThan(root.get("cosmetologistShare"), BigDecimal.ZERO));
     };
   }
 }

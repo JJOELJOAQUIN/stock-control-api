@@ -17,9 +17,10 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
-import com.jowi.stock.cash.enums.SplitPreset;
+
 import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.cash.specifications.CashMovementSpecifications;
+import com.jowi.stock.auth.CurrentUserService;
 import com.jowi.stock.cash.dto.CashItemSpec;
 import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.entities.CashMovementItem;
@@ -33,9 +34,13 @@ public class CashMovementService {
   private static final BigDecimal DEFAULT_CARD_RETENTION = new BigDecimal("0.30");
   private static final BigDecimal COSMETOLOGIST_PRODUCT_PERCENT = new BigDecimal("0.05");
   private final CashMovementRepository repository;
+  private final CurrentUserService currentUserService;
 
-  public CashMovementService(CashMovementRepository repository) {
+  public CashMovementService(
+      CashMovementRepository repository,
+      CurrentUserService currentUserService) {
     this.repository = repository;
+    this.currentUserService = currentUserService;
   }
 
   public CashMovement create(CreateCashMovementRequest req) {
@@ -338,6 +343,15 @@ public class CashMovementService {
         .and(CashMovementSpecifications.createdFrom(from))
         .and(CashMovementSpecifications.createdBefore(to))
         .and(CashMovementSpecifications.textContains(q));
+
+    // Blindaje por rol, no filtro de UI: la cosmetóloga sólo recibe SUS
+    // movimientos, decidido acá y no en el front. El front trae todo y
+    // filtra en memoria, así que un filtro client-side igual le mandaría
+    // las compras, egresos y ventas de la médica al navegador — el mismo
+    // patrón de fuga que ya pasó con la card de producción.
+    if (currentUserService.isCosmetologist()) {
+      spec = spec.and(CashMovementSpecifications.visibleToCosmetologist());
+    }
 
     return repository.findAll(spec, pageable);
   }
