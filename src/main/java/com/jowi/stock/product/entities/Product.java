@@ -3,6 +3,7 @@ package com.jowi.stock.product.entities;
 import java.math.BigDecimal;
 
 import com.jowi.stock.common.BaseEntity;
+import com.jowi.stock.product.enums.ConsumptionUnit;
 import com.jowi.stock.product.enums.ProductBrand;
 import com.jowi.stock.product.enums.ProductCategory;
 import com.jowi.stock.product.enums.ProductScope;
@@ -62,6 +63,23 @@ public class Product extends BaseEntity {
 
   @Column(name = "default_markup_percentage", precision = 5, scale = 2)
   private BigDecimal defaultMarkupPercentage;
+
+  /**
+   * Unidad en la que se cuenta el stock. Null = UNIDAD (retail, comportamiento
+   * de siempre). Ver ConsumptionUnit.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "consumption_unit", length = 20)
+  private ConsumptionUnit consumptionUnit;
+
+  /**
+   * Cuántas unidades consumibles trae un envase comercial. La compra se carga
+   * en ENVASES y el stock ingresa multiplicado: caja NCTF (5 viales × 3 ml)
+   * -> 15; caja DMAE (20 ampollas) -> 20; pin Frax (40 disparos) -> 40.
+   * Null o 1 = envase y unidad coinciden (retail, sin cambios).
+   */
+  @Column(name = "units_per_package")
+  private Integer unitsPerPackage;
 
   /**
    * Vida útil estimada en meses para productos SIN fecha de vencimiento
@@ -192,5 +210,21 @@ public class Product extends BaseEntity {
 
   public void setBarcode(String barcode) {
     this.barcode = barcode;
+  }
+
+  public ConsumptionUnit getConsumptionUnit() {
+    return consumptionUnit;
+  }
+
+  public void setConsumptionUnit(ConsumptionUnit consumptionUnit) {
+    this.consumptionUnit = consumptionUnit;
+  }
+
+  public Integer getUnitsPerPackage() {
+    return unitsPerPackage;
+  }
+
+  public void setUnitsPerPackage(Integer unitsPerPackage) {
+    this.unitsPerPackage = unitsPerPackage;
   }
 }

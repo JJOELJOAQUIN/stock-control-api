@@ -59,10 +59,7 @@ class CashMovementControllerTest {
                                 UUID.randomUUID(), // referenceId
                                 null, // doctorSharePercent
                                 null, // cosmetologistSharePercent
-                                CashActor.MEDICA, // performedBy
-                                null, // procedureCode
-                                null, // splitPreset
-                                null); // peelingPaymentKind
+                                CashActor.MEDICA); // performedBy
 
                 CashMovement created = new CashMovement();
                 created.setType(req.type());

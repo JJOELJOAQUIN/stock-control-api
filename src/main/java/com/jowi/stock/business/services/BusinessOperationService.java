@@ -1,6 +1,7 @@
 package com.jowi.stock.business.services;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -8,6 +9,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import com.jowi.stock.batch.services.ProductBatchService;
 import com.jowi.stock.business.dto.InternalConsumptionRequest;
+import com.jowi.stock.business.dto.DermatoProcedureRequest;
 import com.jowi.stock.business.dto.PurchaseItemRequest;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
 import com.jowi.stock.cash.enums.CashActor;
@@ -91,16 +93,13 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             amount,
-            null,              // retentionPercent
+            null,
             comment,
-            product.getName(), // detail
-            productId,         // referenceId
-            null,              // doctorSharePercent
-            null,              // cosmetologistSharePercent
-            null,              // performedBy
-            null,              // procedureCode
-            null,              // splitPreset
-            null));            // peelingPaymentKind
+            product.getName(),
+            productId,
+            null,
+            null,
+            null));
 
     stockMovementService.linkToCashMovement(
         stockMovement.getId(), cashMovement.getId());
@@ -189,16 +188,13 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             computedTotal,
-            BigDecimal.ZERO, // retentionPercent
+            BigDecimal.ZERO,
             comment,
-            null,            // detail
-            null,            // referenceId
-            null,            // doctorSharePercent
-            null,            // cosmetologistSharePercent
-            null,            // performedBy
-            null,            // procedureCode
-            null,            // splitPreset
-            null));          // peelingPaymentKind
+            null,
+            null,
+            null,
+            null,
+            null));
   }
 
   /**
@@ -210,27 +206,41 @@ public class BusinessOperationService {
       PurchaseItemRequest item, StockContext stockContext) {
 
     UUID productId = item.productId();
-    int quantity = item.quantity();
+    int packages = item.quantity();
 
     var product = productService.getById(productId);
+
+    // La compra se carga en ENVASES; el stock y el lote entran en la unidad
+    // consumible del producto. Caja de NCTF (unitsPerPackage = 15): comprar 1
+    // ingresa 15 ml, y una sesión descuenta 1 o 2. Para el retail el factor
+    // es 1 y nada cambia.
+    int perPackage = product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1
+        ? 1
+        : product.getUnitsPerPackage();
+    int stockUnits = packages * perPackage;
 
     if (!stockService.exists(productId, stockContext)) {
       stockService.initStock(productId, stockContext, 0);
     }
 
-    stockService.increase(productId, stockContext, quantity);
+    stockService.increase(productId, stockContext, stockUnits);
 
     batchService.createBatch(
         productId,
         stockContext,
-        quantity,
+        stockUnits,
         item.expirationDate(),
         item.lotNumber());
 
     BigDecimal unitCost = item.unitCost();
 
     if (Boolean.TRUE.equals(item.updateCostPrice())) {
-      product.setCostPrice(unitCost);
+      // unitCost es el costo del ENVASE; costPrice se guarda por unidad
+      // consumible para que valor de stock (cantidad × costo) y el costo por
+      // sesión cierren. Caja NCTF $562.400 / 15 -> $37.493,33 el ml.
+      product.setCostPrice(perPackage > 1
+          ? unitCost.divide(BigDecimal.valueOf(perPackage), 2, RoundingMode.HALF_UP)
+          : unitCost);
     }
 
     if (Boolean.TRUE.equals(item.updateSalePrice()) && item.newSalePrice() != null) {
@@ -284,16 +294,13 @@ public class BusinessOperationService {
             paymentMethod,
             context,
             amount,
-            null,              // retentionPercent
+            null,
             comment,
-            product.getName(), // detail
-            product.getId(),   // referenceId
-            null,              // doctorSharePercent
-            null,              // cosmetologistSharePercent
-            performedBy,
-            null,              // procedureCode
-            null,              // splitPreset
-            null));            // peelingPaymentKind
+            product.getName(),
+            product.getId(),
+            null,
+            null,
+            performedBy));
 
     stockMovementService.linkToCashMovement(
         stockMovement.getId(), cashMovement.getId());
@@ -304,10 +311,6 @@ public class BusinessOperationService {
    * (no tocan stock) en una única operación. Genera un solo CashMovement con
    * N ítems. Corre en la transacción de la clase: si algo falla, se revierte
    * el stock descontado y no se crea el movimiento.
-   *
-   * El peeling profundo no pasa por acá: está excluido del carrito a propósito
-   * y tiene su propio flujo por la card de procedimientos, que es donde vive
-   * el reparto configurable.
    */
   public void combinedSale(CombinedSaleRequest req) {
     if (req.items() == null || req.items().isEmpty()) {
@@ -400,6 +403,92 @@ public class BusinessOperationService {
         req.comment(),
         req.expectedTotal(),
         lines);
+
+    stockMovementService.linkToCashMovement(stockMovementIds, cashMovement.getId());
+  }
+
+  /**
+   * Sesión de tratamiento dermatológico: descuenta los insumos del recetario
+   * (motivo PROCEDIMIENTO, en la unidad consumible de cada producto) y
+   * registra UN ingreso de caja 100% médica, con los movimientos de stock
+   * linkeados al de caja — mismo patrón que una venta. Si un insumo no
+   * alcanza, la transacción entera se revierte y no se registra plata.
+   */
+  /**
+   * Sesión de tratamiento con recetario: descuenta los insumos (motivo
+   * PROCEDIMIENTO, en la unidad consumible de cada producto) y registra UN
+   * ingreso de caja con el reparto del request, con los movimientos de stock
+   * linkeados al de caja — mismo patrón que una venta. Si un insumo no
+   * alcanza, la transacción entera se revierte y no se registra plata.
+   */
+  public void dermatoProcedure(DermatoProcedureRequest req) {
+    if (req.amount() == null || req.amount().compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("El monto debe ser mayor a cero");
+    }
+    if (req.paymentMethod() == null) {
+      throw new IllegalArgumentException("paymentMethod is required");
+    }
+    if (req.context() == null) {
+      throw new IllegalArgumentException("context is required");
+    }
+    if (req.description() == null || req.description().isBlank()) {
+      throw new IllegalArgumentException("La descripción del procedimiento es obligatoria");
+    }
+
+    // Reparto: null = 100% médica (compatibilidad con el cliente original).
+    // La suma debe dar 1: mueve plata entre dos personas, se valida acá.
+    BigDecimal doctorPercent = req.doctorSharePercent() == null
+        ? BigDecimal.ONE
+        : req.doctorSharePercent();
+    BigDecimal cosmetologistPercent = req.cosmetologistSharePercent() == null
+        ? BigDecimal.ZERO
+        : req.cosmetologistSharePercent();
+
+    if (doctorPercent.add(cosmetologistPercent).compareTo(BigDecimal.ONE) != 0) {
+      throw new IllegalArgumentException(
+          "doctorSharePercent + cosmetologistSharePercent debe ser 1");
+    }
+
+    StockContext stockContext = req.context().toStockContext();
+    List<UUID> stockMovementIds = new ArrayList<>();
+
+    if (req.consumptions() != null) {
+      for (DermatoProcedureRequest.ConsumptionLine line : req.consumptions()) {
+        if (line.quantity() <= 0) {
+          throw new IllegalArgumentException("La cantidad consumida debe ser mayor a cero");
+        }
+
+        var product = productService.getById(line.productId());
+
+        StockMovement stockMovement = stockService.decrease(
+            product.getId(),
+            stockContext,
+            line.quantity(),
+            StockMovementReason.PROCEDIMIENTO,
+            "Consumo por procedimiento: " + req.description());
+
+        stockMovementIds.add(stockMovement.getId());
+      }
+    }
+
+    String comment = req.comment() == null || req.comment().isBlank()
+        ? req.description()
+        : req.comment().trim();
+
+    CashMovement cashMovement = cashService.create(
+        new CreateCashMovementRequest(
+            CashMovementType.IN,
+            CashSource.PROCEDURE,
+            req.paymentMethod(),
+            req.context(),
+            req.amount(),
+            null,                 // retentionPercent
+            comment,
+            req.description(),    // detail
+            null,                 // referenceId
+            doctorPercent,
+            cosmetologistPercent,
+            req.performedBy()));
 
     stockMovementService.linkToCashMovement(stockMovementIds, cashMovement.getId());
   }

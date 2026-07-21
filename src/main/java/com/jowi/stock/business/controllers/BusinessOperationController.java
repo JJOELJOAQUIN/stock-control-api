@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.jowi.stock.business.dto.CombinedSaleRequest;
+import com.jowi.stock.business.dto.DermatoProcedureRequest;
 import com.jowi.stock.business.dto.InternalConsumptionRequest;
 import com.jowi.stock.business.dto.PurchaseOrderRequest;
 import com.jowi.stock.business.dto.SellByBarcodeRequest;
@@ -76,6 +77,17 @@ public class BusinessOperationController {
   public ResponseEntity<Void> internalConsumption(
       @Valid @RequestBody InternalConsumptionRequest req) {
     service.internalConsumption(req);
+    return ResponseEntity.status(HttpStatus.CREATED).build();
+  }
+
+  /**
+   * Sesión de tratamiento dermatológico: caja (100% médica) + consumo de
+   * insumos del recetario en una sola operación atómica.
+   */
+  @PostMapping("/dermato-procedure")
+  public ResponseEntity<Void> dermatoProcedure(
+      @Valid @RequestBody DermatoProcedureRequest req) {
+    service.dermatoProcedure(req);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 }

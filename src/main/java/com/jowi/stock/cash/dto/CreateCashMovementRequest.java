@@ -8,39 +8,27 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
-import com.jowi.stock.cash.enums.PeelingPaymentKind;
-import com.jowi.stock.cash.enums.SplitPreset;
 
 /**
- * @param procedureCode     código del procedimiento (sólo source = PROCEDURE).
- *                          Antes el procedimiento sólo viajaba como texto en
- *                          detail/comment: sin un código estructurado no hay
- *                          forma de validar reglas por procedimiento sin
- *                          comparar strings de UI.
- * @param splitPreset       reparto del pago. Sólo admite valores distintos de
- *                          NORMAL en el peeling profundo. Null se trata como
- *                          NORMAL.
- * @param peelingPaymentKind cuota del peeling. Necesario para validar que
- *                          TODO_COSMETOLOGA sea efectivamente la primera.
- * @param performedBy       quién hizo el trabajo. Obligatorio en PRODUCT_SALE
- *                          de consultorio; en PROCEDURE se persiste en el ítem
- *                          para que la card de la cosmetóloga no dependa de
- *                          inferir la autoría desde el monto.
+ * Request genérico de movimiento de caja.
+ *
+ * Nota histórica: una versión intermedia le agregó procedureCode,
+ * splitPreset y peelingPaymentKind para el reparto del peeling. Ese camino
+ * se abandonó — el peeling se cobra por Tratamientos y su preset viaja en
+ * RegisterPaymentRequest — así que este record volvió a sus 12 componentes.
+ * Si alguna vez ves llamadas con 15 argumentos, son restos de esa versión.
  */
 public record CreateCashMovementRequest(
-                CashMovementType type,
-                CashSource source,
-                PaymentMethod paymentMethod,
-                CashContext context,
-                BigDecimal amount,
-                BigDecimal retentionPercent,
-                String comment,
-                String detail,
-                UUID referenceId,
-                BigDecimal doctorSharePercent,
-                BigDecimal cosmetologistSharePercent,
-                CashActor performedBy,
-                String procedureCode,
-                SplitPreset splitPreset,
-                PeelingPaymentKind peelingPaymentKind) {
+    CashMovementType type,
+    CashSource source,
+    PaymentMethod paymentMethod,
+    CashContext context,
+    BigDecimal amount,
+    BigDecimal retentionPercent,
+    String comment,
+    String detail,
+    UUID referenceId,
+    BigDecimal doctorSharePercent,
+    BigDecimal cosmetologistSharePercent,
+    CashActor performedBy) {
 }
