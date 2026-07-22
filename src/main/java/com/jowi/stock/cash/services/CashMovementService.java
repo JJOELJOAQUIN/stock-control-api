@@ -86,6 +86,7 @@ public class CashMovementService {
     m.setNetAmount(net);
     m.setComment(req.comment());
     m.setDetail(req.detail());
+    m.setProcedureCode(req.procedureCode());
     m.setReferenceId(req.referenceId());
 
     if (req.source() == CashSource.PROCEDURE &&

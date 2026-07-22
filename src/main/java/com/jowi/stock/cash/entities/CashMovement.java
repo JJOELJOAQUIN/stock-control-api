@@ -91,6 +91,9 @@ public class CashMovement extends BaseEntity {
   @Column(name = "voided_by", length = 120)
   private String voidedBy;
 
+  @Column(name = "procedure_code", length = 60)
+  private String procedureCode;
+
   @OneToMany(mappedBy = "cashMovement", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CashMovementItem> items = new ArrayList<>();
 
@@ -184,6 +187,14 @@ public class CashMovement extends BaseEntity {
 
   public java.util.UUID getReferenceId() {
     return referenceId;
+  }
+
+  public String getProcedureCode() {
+    return procedureCode;
+  }
+
+  public void setProcedureCode(String procedureCode) {
+    this.procedureCode = procedureCode;
   }
 
   public void setReferenceId(java.util.UUID referenceId) {

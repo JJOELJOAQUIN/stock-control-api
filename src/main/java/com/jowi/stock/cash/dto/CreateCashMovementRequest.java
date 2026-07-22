@@ -9,15 +9,6 @@ import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.enums.PaymentMethod;
 
-/**
- * Request genérico de movimiento de caja.
- *
- * Nota histórica: una versión intermedia le agregó procedureCode,
- * splitPreset y peelingPaymentKind para el reparto del peeling. Ese camino
- * se abandonó — el peeling se cobra por Tratamientos y su preset viaja en
- * RegisterPaymentRequest — así que este record volvió a sus 12 componentes.
- * Si alguna vez ves llamadas con 15 argumentos, son restos de esa versión.
- */
 public record CreateCashMovementRequest(
     CashMovementType type,
     CashSource source,
@@ -30,5 +21,22 @@ public record CreateCashMovementRequest(
     UUID referenceId,
     BigDecimal doctorSharePercent,
     BigDecimal cosmetologistSharePercent,
-    CashActor performedBy) {
+    CashActor performedBy,
+    String procedureCode) {
+
+  /**
+   * Constructor de compatibilidad con los 12 componentes originales, para los
+   * flujos que no registran procedimientos (ventas, compras, egresos).
+   * Agregar un componente al record ya rompió cuatro call sites una vez.
+   */
+  public CreateCashMovementRequest(
+      CashMovementType type, CashSource source, PaymentMethod paymentMethod,
+      CashContext context, BigDecimal amount, BigDecimal retentionPercent,
+      String comment, String detail, UUID referenceId,
+      BigDecimal doctorSharePercent, BigDecimal cosmetologistSharePercent,
+      CashActor performedBy) {
+    this(type, source, paymentMethod, context, amount, retentionPercent,
+        comment, detail, referenceId, doctorSharePercent,
+        cosmetologistSharePercent, performedBy, null);
+  }
 }
