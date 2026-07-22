@@ -1,5 +1,6 @@
 package com.jowi.stock.metrics.services;
 
+import com.jowi.stock.auth.CurrentUserService;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.metrics.dto.MonthlyMetricsResponse;
 import com.jowi.stock.metrics.repositories.MetricsRepository;
@@ -17,9 +18,13 @@ import java.util.Map;
 public class MetricsService {
 
   private final MetricsRepository repository;
+  private final CurrentUserService currentUserService;
 
-  public MetricsService(MetricsRepository repository) {
+  public MetricsService(
+      MetricsRepository repository,
+      CurrentUserService currentUserService) {
     this.repository = repository;
+    this.currentUserService = currentUserService;
   }
 
   public MonthlyMetricsResponse monthly(CashContext context, int year, int month) {
@@ -61,6 +66,31 @@ public class MetricsService {
             num(ph, 2).add(num(pi, 2)),
             num(ph, 3).add(num(pi, 3)),
             num(ph, 4).add(num(pi, 4)));
+
+    // Blindaje por rol. La cosmetóloga recibe SOLO lo suyo: los
+    // procedimientos donde le tocó algo, y de esas filas únicamente su
+    // parte. El bruto y la parte de la médica se ponen en cero antes de
+    // salir del servidor — si viajaran, la parte de la médica se deduce
+    // restando, y "no mostrar" en el front no es lo mismo que "no enviar".
+    if (currentUserService.isCosmetologist()) {
+      procedures = procedures.stream()
+          .filter(p -> p.cosmetologistShare().compareTo(BigDecimal.ZERO) > 0)
+          .map(p -> new MonthlyMetricsResponse.ProcedureMetricRow(
+              p.procedureCode(),
+              p.count(),
+              BigDecimal.ZERO,
+              BigDecimal.ZERO,
+              BigDecimal.ZERO,
+              p.cosmetologistShare()))
+          .toList();
+
+      products = new MonthlyMetricsResponse.ProductMetricRow(
+          products.count(),
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          BigDecimal.ZERO,
+          products.cosmetologistShare());
+    }
 
     return new MonthlyMetricsResponse(year, month, context, procedures, products);
   }
