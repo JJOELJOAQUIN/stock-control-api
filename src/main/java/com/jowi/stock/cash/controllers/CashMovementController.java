@@ -12,20 +12,27 @@ import com.jowi.stock.cash.dto.CashCosmetologistSplitResponse;
 import com.jowi.stock.cash.dto.CashMovementResponse;
 import com.jowi.stock.cash.dto.CashSalesTotalsResponse;
 import com.jowi.stock.cash.dto.CreateCashMovementRequest;
+import com.jowi.stock.cash.dto.VoidCashMovementRequest;
 import com.jowi.stock.cash.entities.CashMovement;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.services.CashMovementService;
+import com.jowi.stock.cash.services.CashVoidService;
 
 @RestController
 @RequestMapping("/api/cash-movements")
 public class CashMovementController {
 
   private final CashMovementService service;
+  private final CashVoidService voidService;
 
-  public CashMovementController(CashMovementService service) {
+ 
+  public CashMovementController(
+      CashMovementService service,
+      CashVoidService voidService) {
     this.service = service;
+    this.voidService = voidService;
   }
 
   @PostMapping
@@ -66,5 +73,18 @@ public class CashMovementController {
   public ResponseEntity<CashSalesTotalsResponse> salesTotals(
       @RequestParam CashContext context) {
     return ResponseEntity.ok(service.salesTotals(context));
+  }
+
+  /**
+   * Anula un movimiento (soft delete visible). Disponible para las dos: el
+   * registro guarda quién fue, que es la garantía real. Compras: se anula
+   * sólo la plata; el stock que entró se corrige a mano si corresponde.
+   */
+  @PostMapping("/{id}/void")
+  public ResponseEntity<CashMovementResponse> voidMovement(
+      @PathVariable java.util.UUID id,
+      @RequestBody VoidCashMovementRequest req) {
+    return ResponseEntity.ok(
+        CashMovementResponse.from(voidService.voidMovement(id, req.reason())));
   }
 }

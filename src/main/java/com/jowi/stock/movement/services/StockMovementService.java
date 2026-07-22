@@ -189,4 +189,6 @@ public class StockMovementService {
       throw new IllegalArgumentException("Movement reasonType is required");
     }
   }
+
+  
 }

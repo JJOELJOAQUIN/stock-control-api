@@ -10,6 +10,7 @@ import com.jowi.stock.common.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(name = "cash_movements", indexes = {
@@ -66,6 +67,29 @@ public class CashMovement extends BaseEntity {
 
   @Column(name = "cosmetologist_share", precision = 18, scale = 2)
   private BigDecimal cosmetologistShare;
+
+  // ===== Anulación (soft delete visible) =====
+  // El movimiento anulado NO se borra: queda en la tabla, tachado, con fecha,
+  // motivo y quién lo anuló. Desaparece de todas las agregaciones (caja del
+  // día, splits, totales) pero no de la historia — el listado lo sigue
+  // mostrando, que es lo que diferencia esto de un delete.
+  //
+  // Los montos NO se tocan al anular: quedan tal cual se registraron. Anular
+  // dos veces no se puede; des-anular tampoco — si la anulación fue un error,
+  // se vuelve a cargar el movimiento.
+
+  @Column(nullable = false)
+  private boolean voided = false;
+
+  @Column(name = "voided_at")
+  private Instant voidedAt;
+
+  @Column(name = "void_reason", length = 300)
+  private String voidReason;
+
+  /** Email de quien anuló, resuelto por CurrentUserService. */
+  @Column(name = "voided_by", length = 120)
+  private String voidedBy;
 
   @OneToMany(mappedBy = "cashMovement", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<CashMovementItem> items = new ArrayList<>();
@@ -180,5 +204,37 @@ public class CashMovement extends BaseEntity {
 
   public void setCosmetologistShare(BigDecimal cosmetologistShare) {
     this.cosmetologistShare = cosmetologistShare;
+  }
+
+  public boolean isVoided() {
+    return voided;
+  }
+
+  public void setVoided(boolean voided) {
+    this.voided = voided;
+  }
+
+  public Instant getVoidedAt() {
+    return voidedAt;
+  }
+
+  public void setVoidedAt(Instant voidedAt) {
+    this.voidedAt = voidedAt;
+  }
+
+  public String getVoidReason() {
+    return voidReason;
+  }
+
+  public void setVoidReason(String voidReason) {
+    this.voidReason = voidReason;
+  }
+
+  public String getVoidedBy() {
+    return voidedBy;
+  }
+
+  public void setVoidedBy(String voidedBy) {
+    this.voidedBy = voidedBy;
   }
 }

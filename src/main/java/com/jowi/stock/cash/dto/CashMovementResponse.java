@@ -25,7 +25,13 @@ public record CashMovementResponse(
     String comment,
     String detail,
     UUID referenceId,
-    Instant createdAt) {
+    Instant createdAt,
+    // Anulación: el listado devuelve los anulados igual, marcados. La tabla
+    // los muestra tachados con el motivo y quién los anuló.
+    boolean voided,
+    Instant voidedAt,
+    String voidReason,
+    String voidedBy) {
   public static CashMovementResponse from(CashMovement m) {
     return new CashMovementResponse(
         m.getId(),
@@ -41,6 +47,10 @@ public record CashMovementResponse(
         m.getComment(),
         m.getDetail(),
         m.getReferenceId(),
-        m.getCreatedAt());
+        m.getCreatedAt(),
+        m.isVoided(),
+        m.getVoidedAt(),
+        m.getVoidReason(),
+        m.getVoidedBy());
   }
 }

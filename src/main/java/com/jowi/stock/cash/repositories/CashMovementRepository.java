@@ -15,6 +15,16 @@ import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.PaymentMethod;
 
+/**
+ * IMPORTANTE — anulación: TODA query de agregación filtra c.voided = false.
+ * Un movimiento anulado no suma en ningún total, split ni métrica. Si se
+ * agrega una query con SUM() acá, tiene que llevar el filtro; olvidarlo hace
+ * que la caja del día mienta sin dar ningún error.
+ *
+ * Las excepciones son deliberadas: findByContext y las Specifications del
+ * listado NO filtran, porque la tabla tiene que seguir mostrando los
+ * anulados tachados. Anular no es borrar.
+ */
 public interface CashMovementRepository
     extends JpaRepository<CashMovement, UUID>, JpaSpecificationExecutor<CashMovement> {
   Page<CashMovement> findByContext(CashContext context, Pageable pageable);
@@ -22,41 +32,47 @@ public interface CashMovementRepository
   @Query("""
         SELECT COALESCE(SUM(c.amount), 0)
         FROM CashMovement c
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
       """)
   BigDecimal totalIn();
 
   @Query("""
         SELECT COALESCE(SUM(c.amount), 0)
         FROM CashMovement c
-        WHERE c.type = 'OUT'
+        WHERE c.voided = false
+          AND c.type = 'OUT'
       """)
   BigDecimal totalOut();
 
   @Query("""
         SELECT COALESCE(SUM(c.retention), 0)
         FROM CashMovement c
+        WHERE c.voided = false
       """)
   BigDecimal totalRetention();
 
   @Query("""
         SELECT COALESCE(SUM(c.netAmount), 0)
         FROM CashMovement c
-        WHERE c.context = :context
+        WHERE c.voided = false
+          AND c.context = :context
       """)
   BigDecimal netByContext(CashContext context);
 
   @Query("""
         SELECT COALESCE(SUM(c.netAmount), 0)
         FROM CashMovement c
-        WHERE c.paymentMethod = :method
+        WHERE c.voided = false
+          AND c.paymentMethod = :method
       """)
   BigDecimal netByPayment(PaymentMethod method);
 
   @Query("""
           SELECT COALESCE(SUM(c.amount), 0)
           FROM CashMovement c
-          WHERE c.type = :type
+          WHERE c.voided = false
+            AND c.type = :type
             AND c.context = :context
       """)
   BigDecimal sumAmountByTypeAndContext(CashMovementType type, CashContext context);
@@ -64,14 +80,16 @@ public interface CashMovementRepository
   @Query("""
           SELECT COALESCE(SUM(c.retention), 0)
           FROM CashMovement c
-          WHERE c.context = :context
+          WHERE c.voided = false
+            AND c.context = :context
       """)
   BigDecimal sumRetentionByContext(CashContext context);
 
   @Query("""
           SELECT COALESCE(SUM(c.amount), 0)
           FROM CashMovement c
-          WHERE c.type = :type
+          WHERE c.voided = false
+            AND c.type = :type
             AND c.paymentMethod = :method
       """)
   BigDecimal sumAmountByTypeAndPaymentMethod(
@@ -81,7 +99,8 @@ public interface CashMovementRepository
   @Query("""
           SELECT COALESCE(SUM(c.retention), 0)
           FROM CashMovement c
-          WHERE c.paymentMethod = :method
+          WHERE c.voided = false
+            AND c.paymentMethod = :method
       """)
   BigDecimal sumRetentionByPaymentMethod(PaymentMethod method);
 
@@ -93,7 +112,8 @@ public interface CashMovementRepository
           SUM(c.retention),
           SUM(c.netAmount)
         FROM CashMovement c
-        WHERE YEAR(c.createdAt) = :year
+        WHERE c.voided = false
+          AND YEAR(c.createdAt) = :year
           AND (:context IS NULL OR c.context = :context)
         GROUP BY MONTH(c.createdAt)
         ORDER BY MONTH(c.createdAt)
@@ -109,7 +129,8 @@ public interface CashMovementRepository
           COALESCE(SUM(c.retention), 0),
           COALESCE(SUM(c.netAmount), 0)
         FROM CashMovement c
-        WHERE YEAR(c.createdAt) = :year
+        WHERE c.voided = false
+          AND YEAR(c.createdAt) = :year
           AND MONTH(c.createdAt) = :month
           AND (:context IS NULL OR c.context = :context)
       """)
@@ -124,7 +145,8 @@ public interface CashMovementRepository
             COALESCE(SUM(c.doctorShare), 0),
             COALESCE(SUM(c.cosmetologistShare), 0)
           FROM CashMovement c
-          WHERE c.type = 'IN'
+          WHERE c.voided = false
+            AND c.type = 'IN'
             AND c.context = :context
             AND YEAR(c.createdAt) = :year
             AND MONTH(c.createdAt) = :month
@@ -140,7 +162,8 @@ public interface CashMovementRepository
           COALESCE(SUM(c.doctorShare), 0),
           COALESCE(SUM(c.cosmetologistShare), 0)
         FROM CashMovement c
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
           AND c.context = :context
           AND c.createdAt >= :from
           AND c.createdAt < :to
@@ -193,7 +216,8 @@ public interface CashMovementRepository
               THEN i.doctorShare ELSE 0 END), 0)
         FROM CashMovement c
         JOIN c.items i
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
           AND c.context = :context
           AND (
                 i.performedBy = com.jowi.stock.cash.enums.CashActor.COSMETOLOGA
@@ -214,7 +238,8 @@ public interface CashMovementRepository
           COALESCE(SUM(CASE WHEN c.source = 'PRODUCT_SALE' THEN c.cosmetologistShare ELSE 0 END), 0),
           COALESCE(SUM(CASE WHEN c.source = 'PRODUCT_SALE' THEN c.doctorShare        ELSE 0 END), 0)
         FROM CashMovement c
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
           AND c.context = :context
           AND c.cosmetologistShare > 0
           AND c.items IS EMPTY
@@ -240,7 +265,8 @@ public interface CashMovementRepository
               THEN i.subtotal ELSE 0 END), 0)
         FROM CashMovement c
         JOIN c.items i
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
           AND c.context = :context
       """)
   Object[] salesTotalsFromItems(@Param("context") CashContext context);
@@ -250,7 +276,8 @@ public interface CashMovementRepository
           COALESCE(SUM(CASE WHEN c.source = 'PRODUCT_SALE' THEN c.amount ELSE 0 END), 0),
           COALESCE(SUM(CASE WHEN c.source = 'PROCEDURE'    THEN c.amount ELSE 0 END), 0)
         FROM CashMovement c
-        WHERE c.type = 'IN'
+        WHERE c.voided = false
+          AND c.type = 'IN'
           AND c.context = :context
           AND c.items IS EMPTY
       """)

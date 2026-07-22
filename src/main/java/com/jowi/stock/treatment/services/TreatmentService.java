@@ -315,4 +315,49 @@ public class TreatmentService {
 
     return base;
   }
+
+  /**
+   * Revierte un pago a partir de su movimiento de caja anulado. Si el
+   * movimiento no corresponde a ningún pago de tratamiento (procedimiento
+   * suelto), no hace nada: decide la búsqueda por cash_movement_id, no el
+   * source, porque es el único vínculo confiable.
+   *
+   * Baja paid_amount, recalcula el estado y elimina la fila de
+   * treatment_payments — así la próxima cuota se numera desde los pagos que
+   * quedaron, en lugar de contar uno anulado.
+   */
+  public void revertPaymentByCashMovement(java.util.UUID cashMovementId) {
+    Payment payment = paymentRepository.findByCashMovementId(cashMovementId).orElse(null);
+
+    if (payment == null) {
+      return;
+    }
+
+    Treatment t = payment.getTreatment();
+
+    BigDecimal newPaid = t.getPaidAmount()
+        .subtract(payment.getAmount())
+        .setScale(2, RoundingMode.HALF_UP);
+
+    if (newPaid.compareTo(BigDecimal.ZERO) < 0) {
+      newPaid = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    t.setPaidAmount(newPaid);
+
+    if (newPaid.compareTo(BigDecimal.ZERO) == 0) {
+      t.setStatus(TreatmentStatus.PENDIENTE);
+    } else if (newPaid.compareTo(t.getTotalAmount()) < 0) {
+      t.setStatus(TreatmentStatus.PARCIAL);
+    } else {
+      t.setStatus(TreatmentStatus.COMPLETO);
+    }
+
+    // orphanRemoval en Treatment.payments borra la fila al sacarla de la
+    // colección; borrar sólo por el repository dejaría la entidad viva en la
+    // sesión y la fila reaparecería en el flush.
+    t.getPayments().remove(payment);
+
+    treatmentRepository.save(t);
+  }
 }
