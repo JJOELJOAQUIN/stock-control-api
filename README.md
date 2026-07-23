@@ -114,7 +114,7 @@ http://localhost:8080/swagger-ui/index.html
 docker bases de prueba: 
 
 
-docker exec -it NOMBRE_CONTENEDOR psql -U stock_user -d stock_control
+docker exec -it stock_postgres psql -U stock_user -d stock_control
 ## 🧪 Testing & Coverage
 
 Perfil `test` utiliza H2 en memoria.

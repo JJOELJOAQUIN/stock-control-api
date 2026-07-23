@@ -225,11 +225,21 @@ public class BusinessOperationService {
 
     stockService.increase(productId, stockContext, stockUnits);
 
+    // Vencimiento por defecto: si la compra no trae fecha y el producto tiene
+    // vida util configurada (shelfLifeMonths), el lote nace con
+    // hoy + esos meses. Es el caso de los magistrales y de productos como el
+    // Labial de Vitamina E, que no traen fecha impresa pero vencen igual.
+    // Si la compra SI trae fecha, la fecha manda: el default nunca la pisa.
+    java.time.LocalDate expiration = item.expirationDate();
+    if (expiration == null && product.getShelfLifeMonths() != null) {
+      expiration = java.time.LocalDate.now().plusMonths(product.getShelfLifeMonths());
+    }
+
     batchService.createBatch(
         productId,
         stockContext,
         stockUnits,
-        item.expirationDate(),
+        expiration,
         item.lotNumber());
 
     BigDecimal unitCost = item.unitCost();

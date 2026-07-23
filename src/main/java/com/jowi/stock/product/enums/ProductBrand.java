@@ -22,5 +22,6 @@ public enum ProductBrand {
   BEAUTY_NOW,
   MIRADROR,
   UVANZA,
-  EXODERMAL
+  EXODERMAL,
+  MERZ_AESTHETICS
 }
