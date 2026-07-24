@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,63 @@ public class BusinessOperationService {
           StockMovementReason.PEDIDO_ESPECIAL,
           StockMovementReason.VENCIMIENTO,
           StockMovementReason.OTRO);
+
+  /**
+   * Reparto autoritativo de un procedimiento: quién lo realiza y qué % le toca
+   * a cada una. El backend NO confía en los porcentajes que manda el cliente
+   * para procedimientos; los resuelve acá por código. Un bug de front (como el
+   * default 60/40 que le metía 40% de cada CONSULTA a la cosmetóloga) ya no
+   * puede escribir plata mal: el server pisa lo que venga.
+   *
+   * @param performer     quién hace el trabajo (define la card de la cosmetóloga)
+   * @param doctorPercent % neto para la médica
+   * @param cosmoPercent  % neto para la cosmetóloga (doctor + cosmo == 1)
+   */
+  private record ProcedureSplit(
+      CashActor performer, BigDecimal doctorPercent, BigDecimal cosmoPercent) {}
+
+  private static final BigDecimal COSMO_PROCEDURE_PERCENT = new BigDecimal("0.70");
+  private static final BigDecimal COSMO_PROCEDURE_DOCTOR_PERCENT = new BigDecimal("0.30");
+
+  private static final ProcedureSplit MEDICA_SPLIT =
+      new ProcedureSplit(CashActor.MEDICA, BigDecimal.ONE, BigDecimal.ZERO);
+  private static final ProcedureSplit COSMO_SPLIT =
+      new ProcedureSplit(
+          CashActor.COSMETOLOGA, COSMO_PROCEDURE_DOCTOR_PERCENT, COSMO_PROCEDURE_PERCENT);
+
+  /**
+   * Procedimientos de cosmetología (70% cosmetóloga / 30% médica). Espejo del
+   * COSMETOLOGIA_PROCEDURES del front (cash.types.ts). Todo código que NO esté
+   * acá se trata como procedimiento médico: 100% médica, performer MEDICA.
+   *
+   * El default hacia médica es deliberado: si algún día se agrega una
+   * cosmetología nueva y se olvida sumarla acá, el error es "a la cosmetóloga
+   * le falta plata" (visible, se reclama) y no "la cosmetóloga cobra de más"
+   * (invisible, es justo el bug que estamos arreglando).
+   */
+  private static final Set<String> COSMETOLOGIA_PROCEDURE_CODES = Set.of(
+      "DERMAPEN_DERMAPLANING",
+      "DERMAPEN_DERMAPLANING_LIMPIEZA_PREMIUM",
+      "LIMPIEZA_SIMPLE",
+      "LIMPIEZA_PREMIUM",
+      "LIMPIEZA_PREMIUM_HIDRATACION",
+      "LIMPIEZA_PREMIUM_DERMAPLANING",
+      "DERMAPLANING",
+      "DERMAPEN",
+      "EXOSOMAS",
+      "HYDRA",
+      "ESPALDA",
+      "PEELING_COSMETOLOGICO",
+      "FRAX_FACE_COSMETOLOGICO",
+      "FRAX_FACE_COSMETOLOGICO_EXOSOMAS");
+
+  private static ProcedureSplit resolveProcedureSplit(String procedureCode) {
+    if (procedureCode != null
+        && COSMETOLOGIA_PROCEDURE_CODES.contains(procedureCode.trim().toUpperCase())) {
+      return COSMO_SPLIT;
+    }
+    return MEDICA_SPLIT;
+  }
 
   private final StockService stockService;
   private final CashMovementService cashService;
@@ -383,12 +441,13 @@ public class BusinessOperationService {
             ? item.procedureCode()
             : item.description();
 
-        // Autoria del procedimiento: la del item si vino, si no la de la
-        // cabecera. Sin esto no hay forma de distinguir un procedimiento
-        // hecho por Gise con 0% para ella de uno propio de Pili.
-        CashActor procedurePerformer = item.performedBy() != null
-            ? item.performedBy()
-            : req.performedBy();
+        // BLINDAJE: el reparto y la autoría de un procedimiento los decide el
+        // backend por código, NO el cliente. Los performedBy /
+        // doctorSharePercent / cosmetologistSharePercent que vengan en el
+        // request se ignoran a propósito. Una CONSULTA siempre sale 100%
+        // médica y firmada MEDICA, aunque el front mande 40% para la
+        // cosmetóloga (que es exactamente el bug que rompía el ranking).
+        ProcedureSplit split = resolveProcedureSplit(item.procedureCode());
 
         lines.add(new CombinedItemLine(
             CashMovementItemKind.PROCEDURE,
@@ -398,9 +457,9 @@ public class BusinessOperationService {
             item.quantity(),
             item.unitAmount(),
             item.subtotal(),
-            procedurePerformer,
-            item.doctorSharePercent(),
-            item.cosmetologistSharePercent()));
+            split.performer(),
+            split.doctorPercent(),
+            split.cosmoPercent()));
 
       } else {
         throw new IllegalArgumentException("kind de ítem desconocido");
