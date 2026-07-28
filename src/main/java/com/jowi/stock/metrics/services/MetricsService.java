@@ -72,6 +72,28 @@ public class MetricsService {
             num(ph, 3).add(num(pi, 3)),
             num(ph, 4).add(num(pi, 4)));
 
+    // ── Detalle por producto con ganancia real ──
+    // profit = revenue - cost - commission. Ordenado de mayor a menor por
+    // cantidad vendida (más vendido primero), como pidió la Dra.
+    List<MonthlyMetricsResponse.ProductDetailRow> productDetail = new ArrayList<>();
+    for (Object[] r : repository.productsDetail(context, from, to)) {
+      String productId = (String) r[0];
+      String name = (String) r[1];
+      long qty = ((Number) r[2]).longValue();
+      BigDecimal revenue = dec(r[3]);
+      BigDecimal commission = dec(r[4]);
+      BigDecimal cost = dec(r[5]);
+      BigDecimal profit = revenue.subtract(cost).subtract(commission);
+
+      productDetail.add(new MonthlyMetricsResponse.ProductDetailRow(
+          productId, name, qty, revenue, cost, commission, profit));
+    }
+    productDetail.sort(
+        java.util.Comparator
+            .comparingLong(MonthlyMetricsResponse.ProductDetailRow::count)
+            .thenComparing(MonthlyMetricsResponse.ProductDetailRow::revenue)
+            .reversed());
+
     // Blindaje por rol. La cosmetóloga recibe SOLO lo suyo: los
     // procedimientos donde le tocó algo, y de esas filas únicamente su
     // parte. El bruto y la parte de la médica se ponen en cero antes de
@@ -95,9 +117,13 @@ public class MetricsService {
           BigDecimal.ZERO,
           BigDecimal.ZERO,
           products.cosmetologistShare());
+
+      // El detalle de costo/ganancia es de Pili: la cosmetóloga no lo ve.
+      productDetail = List.of();
     }
 
-    return new MonthlyMetricsResponse(year, month, context, procedures, products);
+    return new MonthlyMetricsResponse(
+        year, month, context, procedures, products, productDetail);
   }
 
   private void accumulate(

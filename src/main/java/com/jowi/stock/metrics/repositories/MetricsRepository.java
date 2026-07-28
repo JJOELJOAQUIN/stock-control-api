@@ -103,4 +103,39 @@ public interface MetricsRepository extends Repository<CashMovement, UUID> {
       @Param("context") CashContext context,
       @Param("from") Instant from,
       @Param("to") Instant to);
+
+  /**
+   * Detalle por producto vendido en el mes, cruzando el costo del producto.
+   * Cubre venta directa (mirror de PRODUCT_SALE) y venta combinada. Agrupa
+   * por producto y trae cantidad, cobrado (subtotal), comisión de la
+   * cosmetóloga y costo (cantidad * costPrice). La ganancia se calcula en el
+   * service: revenue - cost - commission.
+   *
+   * Join theta contra Product por id: cash_movement_items guarda productId
+   * como columna suelta, no como relación mapeada.
+   */
+  @Query("""
+        SELECT CAST(i.productId AS string),
+               MIN(p.name),
+               COALESCE(SUM(i.quantity), 0),
+               COALESCE(SUM(i.subtotal), 0),
+               COALESCE(SUM(i.cosmetologistShare), 0),
+               COALESCE(SUM(i.quantity * COALESCE(p.costPrice, 0)), 0)
+        FROM CashMovement c
+        JOIN c.items i, com.jowi.stock.product.entities.Product p
+        WHERE p.id = i.productId
+          AND c.voided = false
+          AND c.type = 'IN'
+          AND c.source IN ('PRODUCT_SALE', 'COMBINED_SALE')
+          AND i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+          AND i.productId IS NOT NULL
+          AND c.context = :context
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
+        GROUP BY i.productId
+      """)
+  List<Object[]> productsDetail(
+      @Param("context") CashContext context,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
 }
