@@ -21,37 +21,22 @@ import java.util.UUID;
 public interface MetricsRepository extends Repository<CashMovement, UUID> {
 
   /**
-   * Procedimientos cobrados por su propio flujo (source = PROCEDURE).
+   * Procedimientos del mes, contados SIEMPRE desde los ítems. Cubre los dos
+   * orígenes: el flujo directo (source = PROCEDURE, un ítem espejo por
+   * movimiento) y la venta combinada (source = COMBINED_SALE, un ítem por
+   * línea). Un solo camino, sin doble conteo.
    *
-   * OJO con el conteo: cuando se cargan 2 consultas juntas, el sistema graba
-   * UN movimiento con el monto duplicado y "×2" en el comentario. Acá cuenta
-   * como 1. El facturado es exacto; la cantidad es piso, no exacta.
-   */
-  @Query("""
-        SELECT c.procedureCode,
-               COUNT(c),
-               COALESCE(SUM(c.amount), 0),
-               COALESCE(SUM(c.netAmount), 0),
-               COALESCE(SUM(c.doctorShare), 0),
-               COALESCE(SUM(c.cosmetologistShare), 0)
-        FROM CashMovement c
-        WHERE c.voided = false
-          AND c.type = 'IN'
-          AND c.source = 'PROCEDURE'
-          AND c.procedureCode IS NOT NULL
-          AND c.context = :context
-          AND c.createdAt >= :from
-          AND c.createdAt < :to
-        GROUP BY c.procedureCode
-      """)
-  List<Object[]> proceduresFromHeader(
-      @Param("context") CashContext context,
-      @Param("from") Instant from,
-      @Param("to") Instant to);
-
-  /**
-   * Procedimientos que fueron parte de una venta combinada. El neto por ítem
-   * no se persiste, así que se informa el subtotal en su lugar.
+   * La cantidad sale de SUM(i.quantity): así una consulta cargada con
+   * cantidad 3 cuenta como 3, no como 1. Esto reemplazó al COUNT(c) sobre
+   * cabeceras, que ignoraba la cantidad y hacía que la métrica dijera 15
+   * cuando la facturación correspondía a 19.
+   *
+   * El neto por ítem no se persiste; se informa el subtotal en su lugar
+   * (en consultorio la retención suele ser 0, así que bruto ≈ neto).
+   *
+   * Precondición: todo procedimiento no anulado tiene exactamente un ítem
+   * de kind PROCEDURE con su procedureCode. Lo garantizan el ítem espejo de
+   * CashMovementService y el saneamiento de los datos históricos.
    */
   @Query("""
         SELECT i.procedureCode,
@@ -64,7 +49,7 @@ public interface MetricsRepository extends Repository<CashMovement, UUID> {
         JOIN c.items i
         WHERE c.voided = false
           AND c.type = 'IN'
-          AND c.source = 'COMBINED_SALE'
+          AND c.source IN ('PROCEDURE', 'COMBINED_SALE')
           AND i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PROCEDURE
           AND i.procedureCode IS NOT NULL
           AND c.context = :context
@@ -72,7 +57,7 @@ public interface MetricsRepository extends Repository<CashMovement, UUID> {
           AND c.createdAt < :to
         GROUP BY i.procedureCode
       """)
-  List<Object[]> proceduresFromItems(
+  List<Object[]> proceduresByItems(
       @Param("context") CashContext context,
       @Param("from") Instant from,
       @Param("to") Instant to);

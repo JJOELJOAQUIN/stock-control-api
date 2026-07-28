@@ -163,9 +163,10 @@ public class CashMovementService {
       if (req.source() == CashSource.PRODUCT_SALE) {
         mirror.setProductId(req.referenceId());
       } else {
-        // Código de procedimiento: usamos el detail como identificador legible.
-        // (No hay un code estructurado en este request legacy.)
-        mirror.setProcedureCode(null);
+        // Código de procedimiento: viene en el request. Sin esto el ítem
+        // queda con procedure_code NULL y la métrica, que agrupa por código,
+        // lo tira del conteo (era el bug que dejaba consultas y FRAX afuera).
+        mirror.setProcedureCode(req.procedureCode());
       }
 
       String description = (req.detail() != null && !req.detail().isBlank())

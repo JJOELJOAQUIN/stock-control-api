@@ -557,7 +557,10 @@ public class BusinessOperationService {
             null,                 // referenceId
             doctorPercent,
             cosmetologistPercent,
-            req.performedBy()));
+            req.performedBy(),
+            req.procedureCode())); // sin esto el movimiento queda con
+                                   // procedure_code NULL y la métrica, que
+                                   // agrupa por código, lo tira del conteo.
 
     stockMovementService.linkToCashMovement(stockMovementIds, cashMovement.getId());
   }

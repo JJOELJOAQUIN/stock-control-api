@@ -42,10 +42,7 @@ public class MetricsService {
     Map<String, long[]> counts = new LinkedHashMap<>();
     Map<String, BigDecimal[]> sums = new LinkedHashMap<>();
 
-    for (Object[] row : repository.proceduresFromHeader(context, from, to)) {
-      accumulate(counts, sums, row);
-    }
-    for (Object[] row : repository.proceduresFromItems(context, from, to)) {
+    for (Object[] row : repository.proceduresByItems(context, from, to)) {
       accumulate(counts, sums, row);
     }
 
@@ -55,6 +52,14 @@ public class MetricsService {
       procedures.add(new MonthlyMetricsResponse.ProcedureMetricRow(
           e.getKey(), e.getValue()[0], s[0], s[1], s[2], s[3]));
     }
+
+    // De mayor a menor: primero el procedimiento que más se hizo, y a igual
+    // cantidad el que más facturó. Es el orden que pidió la Dra para la card.
+    procedures.sort(
+        java.util.Comparator
+            .comparingLong(MonthlyMetricsResponse.ProcedureMetricRow::count)
+            .thenComparing(MonthlyMetricsResponse.ProcedureMetricRow::amount)
+            .reversed());
 
     Object[] ph = first(repository.productsFromHeader(context, from, to));
     Object[] pi = first(repository.productsFromItems(context, from, to));
