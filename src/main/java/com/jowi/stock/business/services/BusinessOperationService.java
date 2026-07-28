@@ -32,6 +32,8 @@ import com.jowi.stock.business.dto.CombinedSaleItemRequest;
 import com.jowi.stock.business.dto.CombinedSaleRequest;
 import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.enums.CashMovementItemKind;
+import com.jowi.stock.purchase.entities.PurchaseItem;
+import com.jowi.stock.purchase.repositories.PurchaseItemRepository;
 
 @Service
 @Transactional
@@ -114,18 +116,21 @@ public class BusinessOperationService {
   private final ProductService productService;
   private final ProductBatchService batchService;
   private final StockMovementService stockMovementService;
+  private final PurchaseItemRepository purchaseItemRepository;
 
   public BusinessOperationService(
       StockService stockService,
       CashMovementService cashService,
       ProductService productService,
       ProductBatchService batchService,
-      StockMovementService stockMovementService) {
+      StockMovementService stockMovementService,
+      PurchaseItemRepository purchaseItemRepository) {
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
     this.batchService = batchService;
     this.stockMovementService = stockMovementService;
+    this.purchaseItemRepository = purchaseItemRepository;
   }
 
   public void sellProduct(
@@ -226,8 +231,25 @@ public class BusinessOperationService {
 
     BigDecimal computedTotal = BigDecimal.ZERO;
 
+    // Se arman los renglones de compra mientras se procesa el stock. Se
+    // persisten recién después de crear el movimiento de caja, para colgarlos
+    // de él. Guardan el costo de ESTA compra (no el costPrice actual del
+    // producto, que puede cambiar después) y el nombre como snapshot.
+    List<PurchaseItem> purchaseItems = new ArrayList<>();
+
     for (PurchaseItemRequest item : items) {
       computedTotal = computedTotal.add(processPurchaseItem(item, stockContext));
+
+      var product = productService.getById(item.productId());
+      PurchaseItem pi = new PurchaseItem();
+      pi.setProductId(item.productId());
+      pi.setProductName(product.getName());
+      pi.setQuantity(item.quantity());
+      pi.setUnitCost(item.unitCost());
+      pi.setSubtotal(item.subtotal());
+      pi.setLotNumber(item.lotNumber());
+      pi.setExpirationDate(item.expirationDate());
+      purchaseItems.add(pi);
     }
 
     // Integridad: el total real (calculado desde los ítems) es la fuente de
@@ -239,7 +261,7 @@ public class BusinessOperationService {
           "El total de la compra no coincide con la suma de los ítems");
     }
 
-    cashService.create(
+    CashMovement cashMovement = cashService.create(
         new CreateCashMovementRequest(
             CashMovementType.OUT,
             CashSource.PROVIDER_PAYMENT,
@@ -253,6 +275,12 @@ public class BusinessOperationService {
             null,
             null,
             null));
+
+    // Colgar el detalle de la orden del movimiento de caja recién creado.
+    for (PurchaseItem pi : purchaseItems) {
+      pi.setCashMovement(cashMovement);
+    }
+    purchaseItemRepository.saveAll(purchaseItems);
   }
 
   /**
