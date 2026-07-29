@@ -1,10 +1,8 @@
 package com.jowi.stock.business.services;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.EnumSet;
 import java.util.List;
-
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -34,6 +32,7 @@ import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.enums.CashMovementItemKind;
 import com.jowi.stock.purchase.entities.PurchaseItem;
 import com.jowi.stock.purchase.repositories.PurchaseItemRepository;
+import com.jowi.stock.procedure.services.ProcedureConsumptionService;
 
 @Service
 @Transactional
@@ -117,6 +116,7 @@ public class BusinessOperationService {
   private final ProductBatchService batchService;
   private final StockMovementService stockMovementService;
   private final PurchaseItemRepository purchaseItemRepository;
+  private final ProcedureConsumptionService consumptionService;
 
   public BusinessOperationService(
       StockService stockService,
@@ -124,13 +124,69 @@ public class BusinessOperationService {
       ProductService productService,
       ProductBatchService batchService,
       StockMovementService stockMovementService,
-      PurchaseItemRepository purchaseItemRepository) {
+      PurchaseItemRepository purchaseItemRepository,
+      ProcedureConsumptionService consumptionService) {
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
     this.batchService = batchService;
     this.stockMovementService = stockMovementService;
     this.purchaseItemRepository = purchaseItemRepository;
+    this.consumptionService = consumptionService;
+  }
+
+  /**
+   * Descuenta los insumos de un procedimiento y devuelve los ids de los
+   * movimientos de stock generados (para linkearlos a la caja).
+   *
+   * La receta manda: si el procedimiento tiene BOM cargado, se usa esa y se
+   * ignora lo que haya mandado el cliente (mismo criterio que el reparto).
+   * Si no tiene receta, se cae a las líneas del request — así los
+   * procedimientos viejos sin receta siguen andando igual.
+   *
+   * Si un insumo no alcanza, stockService.decrease tira y la transacción
+   * entera se revierte: no se registra plata sin haber podido descontar.
+   */
+  private List<UUID> consumeInsumos(
+      String procedureCode,
+      List<DermatoProcedureRequest.ConsumptionLine> clientLines,
+      StockContext stockContext,
+      String description) {
+
+    List<UUID> stockMovementIds = new ArrayList<>();
+
+    List<ProcedureConsumptionService.ResolvedLine> recipe =
+        consumptionService.resolve(procedureCode);
+
+    if (!recipe.isEmpty()) {
+      for (ProcedureConsumptionService.ResolvedLine line : recipe) {
+        StockMovement sm = stockService.decrease(
+            line.productId(),
+            stockContext,
+            line.quantity(),
+            StockMovementReason.PROCEDIMIENTO,
+            "Consumo por procedimiento: " + description);
+        stockMovementIds.add(sm.getId());
+      }
+      return stockMovementIds;
+    }
+
+    // Sin receta: fallback a lo que mandó el cliente (compatibilidad).
+    if (clientLines != null) {
+      for (DermatoProcedureRequest.ConsumptionLine line : clientLines) {
+        if (line.quantity() <= 0) {
+          throw new IllegalArgumentException("La cantidad consumida debe ser mayor a cero");
+        }
+        StockMovement sm = stockService.decrease(
+            line.productId(),
+            stockContext,
+            line.quantity(),
+            StockMovementReason.PROCEDIMIENTO,
+            "Consumo por procedimiento: " + description);
+        stockMovementIds.add(sm.getId());
+      }
+    }
+    return stockMovementIds;
   }
 
   public void sellProduct(
@@ -477,6 +533,20 @@ public class BusinessOperationService {
         // cosmetóloga (que es exactamente el bug que rompía el ranking).
         ProcedureSplit split = resolveProcedureSplit(item.procedureCode());
 
+        // Consumo de insumos del procedimiento dentro de la combinada: la
+        // receta del BOM descuenta stock igual que en el flujo directo. Antes
+        // una mesoterapia cargada por multi-ítem no descontaba nada.
+        for (ProcedureConsumptionService.ResolvedLine cl
+            : consumptionService.resolve(item.procedureCode())) {
+          StockMovement sm = stockService.decrease(
+              cl.productId(),
+              stockContext,
+              cl.quantity(),
+              StockMovementReason.PROCEDIMIENTO,
+              "Consumo por procedimiento: " + description);
+          stockMovementIds.add(sm.getId());
+        }
+
         lines.add(new CombinedItemLine(
             CashMovementItemKind.PROCEDURE,
             null,
@@ -547,26 +617,11 @@ public class BusinessOperationService {
     }
 
     StockContext stockContext = req.context().toStockContext();
-    List<UUID> stockMovementIds = new ArrayList<>();
 
-    if (req.consumptions() != null) {
-      for (DermatoProcedureRequest.ConsumptionLine line : req.consumptions()) {
-        if (line.quantity() <= 0) {
-          throw new IllegalArgumentException("La cantidad consumida debe ser mayor a cero");
-        }
-
-        var product = productService.getById(line.productId());
-
-        StockMovement stockMovement = stockService.decrease(
-            product.getId(),
-            stockContext,
-            line.quantity(),
-            StockMovementReason.PROCEDIMIENTO,
-            "Consumo por procedimiento: " + req.description());
-
-        stockMovementIds.add(stockMovement.getId());
-      }
-    }
+    // Consumo de insumos: la receta del procedimiento manda; si no hay,
+    // se usan las líneas del request (compatibilidad).
+    List<UUID> stockMovementIds =
+        consumeInsumos(req.procedureCode(), req.consumptions(), stockContext, req.description());
 
     String comment = req.comment() == null || req.comment().isBlank()
         ? req.description()
