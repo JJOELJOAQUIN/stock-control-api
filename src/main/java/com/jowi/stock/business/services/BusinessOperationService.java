@@ -1,8 +1,10 @@
 package com.jowi.stock.business.services;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -69,12 +71,25 @@ public class BusinessOperationService {
 
   private static final BigDecimal COSMO_PROCEDURE_PERCENT = new BigDecimal("0.70");
   private static final BigDecimal COSMO_PROCEDURE_DOCTOR_PERCENT = new BigDecimal("0.30");
+  private static final BigDecimal HALF = new BigDecimal("0.50");
 
   private static final ProcedureSplit MEDICA_SPLIT =
       new ProcedureSplit(CashActor.MEDICA, BigDecimal.ONE, BigDecimal.ZERO);
   private static final ProcedureSplit COSMO_SPLIT =
       new ProcedureSplit(
           CashActor.COSMETOLOGA, COSMO_PROCEDURE_DOCTOR_PERCENT, COSMO_PROCEDURE_PERCENT);
+  // Reparto mitad y mitad: la realiza la cosmetóloga, pero la médica se lleva
+  // el 50%. Es un tercer tipo de reparto, solo para estos protocolos puntuales.
+  private static final ProcedureSplit FIFTY_FIFTY_SPLIT =
+      new ProcedureSplit(CashActor.COSMETOLOGA, HALF, HALF);
+
+  /**
+   * Procedimientos de cosmetología con reparto 50/50 (no el 70/30 habitual).
+   * Se chequea ANTES que el set de 70/30: son la excepción, no la regla.
+   */
+  private static final Set<String> FIFTY_FIFTY_PROCEDURE_CODES = Set.of(
+      "FRAX_LIMPIEZA_PROFUNDA",
+      "FRAX_EXOSOMAS_LIMPIEZA");
 
   /**
    * Procedimientos de cosmetología (70% cosmetóloga / 30% médica). Espejo del
@@ -103,8 +118,15 @@ public class BusinessOperationService {
       "FRAX_FACE_COSMETOLOGICO_EXOSOMAS");
 
   private static ProcedureSplit resolveProcedureSplit(String procedureCode) {
-    if (procedureCode != null
-        && COSMETOLOGIA_PROCEDURE_CODES.contains(procedureCode.trim().toUpperCase())) {
+    if (procedureCode == null) {
+      return MEDICA_SPLIT;
+    }
+    String code = procedureCode.trim().toUpperCase();
+    // El 50/50 se evalúa primero: es la excepción sobre la cosmetología.
+    if (FIFTY_FIFTY_PROCEDURE_CODES.contains(code)) {
+      return FIFTY_FIFTY_SPLIT;
+    }
+    if (COSMETOLOGIA_PROCEDURE_CODES.contains(code)) {
       return COSMO_SPLIT;
     }
     return MEDICA_SPLIT;
