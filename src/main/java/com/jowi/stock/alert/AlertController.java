@@ -29,4 +29,10 @@ public class AlertController {
     return ResponseEntity.ok(alertService.outOfStock(context));
   }
 
+  // Viales de toxina abiertos y por vencer (día 10 de 20).
+  @GetMapping("/open-vials")
+  public ResponseEntity<List<AlertResponse>> openVials() {
+    return ResponseEntity.ok(alertService.openVialsExpiring());
+  }
+
 }
