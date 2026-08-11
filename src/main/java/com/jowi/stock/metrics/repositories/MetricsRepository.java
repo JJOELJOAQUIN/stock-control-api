@@ -138,4 +138,44 @@ public interface MetricsRepository extends Repository<CashMovement, UUID> {
       @Param("context") CashContext context,
       @Param("from") Instant from,
       @Param("to") Instant to);
+
+  /**
+   * Detalle por producto de lo que vendió LA COSMETÓLOGA en el mes. Espeja
+   * {@link #productsDetail} pero se queda sólo con los ítems donde a Gise le
+   * tocó su 5%: el marcador confiable es cosmetologistShare > 0, no
+   * performedBy — el ítem espejo de una venta directa (sellByBarcode) copia
+   * el share de la cabecera pero NO persiste performedBy, así que filtrar por
+   * autoría dejaría afuera esas ventas. La venta de la médica queda con
+   * cosmetologistShare = 0 y no entra.
+   *
+   * NO trae costo ni ganancia: esta lista la consumen las dos vistas (la Dra
+   * para ver qué vendió Gise, y la propia Gise para su conteo), y el costo es
+   * información de Pili. Devuelve: productId, nombre, cantidad, cobrado
+   * (subtotal) y comisión (el 5% de Gise).
+   */
+  @Query("""
+        SELECT CAST(i.productId AS string),
+               MIN(p.name),
+               COALESCE(SUM(i.quantity), 0),
+               COALESCE(SUM(i.subtotal), 0),
+               COALESCE(SUM(i.cosmetologistShare), 0)
+        FROM CashMovement c
+        JOIN c.items i, com.jowi.stock.product.entities.Product p
+        WHERE p.id = i.productId
+          AND c.voided = false
+          AND c.type = 'IN'
+          AND c.source IN ('PRODUCT_SALE', 'COMBINED_SALE')
+          AND i.kind = com.jowi.stock.cash.enums.CashMovementItemKind.PRODUCT
+          AND i.productId IS NOT NULL
+          AND i.cosmetologistShare IS NOT NULL
+          AND i.cosmetologistShare > 0
+          AND c.context = :context
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
+        GROUP BY i.productId
+      """)
+  List<Object[]> cosmetologistProductsDetail(
+      @Param("context") CashContext context,
+      @Param("from") Instant from,
+      @Param("to") Instant to);
 }

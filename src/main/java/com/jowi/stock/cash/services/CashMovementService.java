@@ -21,6 +21,8 @@ import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.cash.specifications.CashMovementSpecifications;
 import com.jowi.stock.auth.CurrentUserService;
+import com.jowi.stock.procedure.entities.ProcedureCatalog;
+import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
 import com.jowi.stock.cash.dto.CashItemSpec;
 import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.entities.CashMovementItem;
@@ -35,12 +37,15 @@ public class CashMovementService {
   private static final BigDecimal COSMETOLOGIST_PRODUCT_PERCENT = new BigDecimal("0.05");
   private final CashMovementRepository repository;
   private final CurrentUserService currentUserService;
+  private final ProcedureCatalogRepository procedureCatalogRepository;
 
   public CashMovementService(
       CashMovementRepository repository,
-      CurrentUserService currentUserService) {
+      CurrentUserService currentUserService,
+      ProcedureCatalogRepository procedureCatalogRepository) {
     this.repository = repository;
     this.currentUserService = currentUserService;
+    this.procedureCatalogRepository = procedureCatalogRepository;
   }
 
   public CashMovement create(CreateCashMovementRequest req) {
@@ -76,6 +81,10 @@ public class CashMovementService {
         .subtract(retention)
         .setScale(2, RoundingMode.HALF_UP);
 
+    // Se setea abajo si el procedimiento está en el catálogo, para que el
+    // ítem espejo persista quién hizo el trabajo (antes quedaba null acá).
+    CashActor resolvedProcedurePerformer = null;
+
     CashMovement m = new CashMovement();
     m.setType(req.type());
     m.setSource(req.source());
@@ -94,6 +103,21 @@ public class CashMovementService {
 
       BigDecimal doctorPercent = req.doctorSharePercent();
       BigDecimal cosmetologistPercent = req.cosmetologistSharePercent();
+
+      // Catálogo autoritativo: si el tratamiento está cargado, su reparto MANDA
+      // y se ignora lo que mande el cliente (mismo criterio que la venta
+      // combinada). Sin catálogo, se conserva el comportamiento histórico:
+      // el front manda los porcentajes y acá se validan.
+      ProcedureCatalog cat = req.procedureCode() == null ? null
+          : procedureCatalogRepository
+              .findByCodeIgnoreCaseAndActiveTrue(req.procedureCode().trim().toUpperCase())
+              .orElse(null);
+      if (cat != null) {
+        doctorPercent = cat.getDoctorPercent();
+        cosmetologistPercent = cat.getCosmetologistPercent();
+        // Persistimos quién hizo el trabajo (antes quedaba null en este flujo).
+        resolvedProcedurePerformer = cat.getPerformer();
+      }
 
       if (doctorPercent == null || cosmetologistPercent == null) {
         throw new IllegalArgumentException(
@@ -188,6 +212,11 @@ public class CashMovementService {
       // Copiamos el split ya resuelto en la cabecera (null en LOCAL).
       mirror.setDoctorShare(m.getDoctorShare());
       mirror.setCosmetologistShare(m.getCosmetologistShare());
+
+      // Autoría, si el catálogo la resolvió (procedimiento suelto).
+      if (resolvedProcedurePerformer != null) {
+        mirror.setPerformedBy(resolvedProcedurePerformer);
+      }
 
       m.addItem(mirror);
     }

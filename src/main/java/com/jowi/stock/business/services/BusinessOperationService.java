@@ -35,6 +35,8 @@ import com.jowi.stock.cash.enums.CashMovementItemKind;
 import com.jowi.stock.purchase.entities.PurchaseItem;
 import com.jowi.stock.purchase.repositories.PurchaseItemRepository;
 import com.jowi.stock.procedure.services.ProcedureConsumptionService;
+import com.jowi.stock.procedure.entities.ProcedureCatalog;
+import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
 
 @Service
 @Transactional
@@ -117,12 +119,33 @@ public class BusinessOperationService {
       "FRAX_FACE_COSMETOLOGICO",
       "FRAX_FACE_COSMETOLOGICO_EXOSOMAS");
 
-  private static ProcedureSplit resolveProcedureSplit(String procedureCode) {
+  /**
+   * Resuelve el reparto de un procedimiento. Orden de autoridad:
+   *
+   *   1) Catálogo (procedure_catalog): si el tratamiento está cargado y
+   *      activo, MANDA. Es lo que le permite a la Dra crear tratamientos
+   *      nuevos con su reparto sin tocar código.
+   *   2) Fallback hardcodeado: para códigos todavía no sembrados en la tabla,
+   *      se conserva la lógica histórica (50/50, 70/30, o médica por defecto).
+   *
+   * El fallback es lo que hace la migración additiva y segura: aunque la
+   * tabla esté vacía, todo sigue repartiendo exactamente como antes.
+   */
+  private ProcedureSplit resolveProcedureSplit(String procedureCode) {
     if (procedureCode == null) {
       return MEDICA_SPLIT;
     }
     String code = procedureCode.trim().toUpperCase();
-    // El 50/50 se evalúa primero: es la excepción sobre la cosmetología.
+
+    // 1) Catálogo (fuente de verdad).
+    ProcedureCatalog cat =
+        procedureCatalogRepository.findByCodeIgnoreCaseAndActiveTrue(code).orElse(null);
+    if (cat != null) {
+      return new ProcedureSplit(
+          cat.getPerformer(), cat.getDoctorPercent(), cat.getCosmetologistPercent());
+    }
+
+    // 2) Fallback histórico. El 50/50 se evalúa primero: es la excepción.
     if (FIFTY_FIFTY_PROCEDURE_CODES.contains(code)) {
       return FIFTY_FIFTY_SPLIT;
     }
@@ -139,6 +162,7 @@ public class BusinessOperationService {
   private final StockMovementService stockMovementService;
   private final PurchaseItemRepository purchaseItemRepository;
   private final ProcedureConsumptionService consumptionService;
+  private final ProcedureCatalogRepository procedureCatalogRepository;
 
   public BusinessOperationService(
       StockService stockService,
@@ -147,7 +171,8 @@ public class BusinessOperationService {
       ProductBatchService batchService,
       StockMovementService stockMovementService,
       PurchaseItemRepository purchaseItemRepository,
-      ProcedureConsumptionService consumptionService) {
+      ProcedureConsumptionService consumptionService,
+      ProcedureCatalogRepository procedureCatalogRepository) {
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
@@ -155,6 +180,7 @@ public class BusinessOperationService {
     this.stockMovementService = stockMovementService;
     this.purchaseItemRepository = purchaseItemRepository;
     this.consumptionService = consumptionService;
+    this.procedureCatalogRepository = procedureCatalogRepository;
   }
 
   /**

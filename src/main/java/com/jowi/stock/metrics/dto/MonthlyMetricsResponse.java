@@ -10,7 +10,8 @@ public record MonthlyMetricsResponse(
     CashContext context,
     List<ProcedureMetricRow> procedures,
     ProductMetricRow products,
-    List<ProductDetailRow> productDetail) {
+    List<ProductDetailRow> productDetail,
+    List<CosmetologistProductRow> cosmetologistProductDetail) {
 
   public record ProcedureMetricRow(
       String procedureCode,
@@ -47,5 +48,23 @@ public record MonthlyMetricsResponse(
       BigDecimal cost,
       BigDecimal commission,
       BigDecimal profit) {
+  }
+
+  /**
+   * Detalle por producto de lo que vendió la cosmetóloga en el mes. Sin costo
+   * ni ganancia a propósito: la consumen las dos vistas —la Dra, para ver
+   * explícito qué vendió Gise; y la propia Gise, para su conteo mensual— y el
+   * costo de la mercadería es información de Pili, no viaja acá.
+   *
+   * - count:      unidades vendidas por Gise.
+   * - revenue:    lo cobrado por esas ventas (subtotal).
+   * - commission: el 5% que le corresponde a Gise.
+   */
+  public record CosmetologistProductRow(
+      String productId,
+      String name,
+      long count,
+      BigDecimal revenue,
+      BigDecimal commission) {
   }
 }

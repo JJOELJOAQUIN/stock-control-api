@@ -94,6 +94,29 @@ public class MetricsService {
             .thenComparing(MonthlyMetricsResponse.ProductDetailRow::revenue)
             .reversed());
 
+    // ── Detalle de lo que vendió la cosmetóloga (para el conteo) ──
+    // Se arma para las DOS vistas: la Dra lo ve como "productos vendidos por
+    // Gise" y Gise lo ve como su detalle mensual. No lleva costo, así que es
+    // seguro mandárselo a la cosmetóloga tal cual. Más vendido primero.
+    List<MonthlyMetricsResponse.CosmetologistProductRow> cosmetologistProductDetail =
+        new ArrayList<>();
+    for (Object[] r : repository.cosmetologistProductsDetail(context, from, to)) {
+      String productId = (String) r[0];
+      String name = (String) r[1];
+      long qty = ((Number) r[2]).longValue();
+      BigDecimal revenue = dec(r[3]);
+      BigDecimal commission = dec(r[4]);
+
+      cosmetologistProductDetail.add(
+          new MonthlyMetricsResponse.CosmetologistProductRow(
+              productId, name, qty, revenue, commission));
+    }
+    cosmetologistProductDetail.sort(
+        java.util.Comparator
+            .comparingLong(MonthlyMetricsResponse.CosmetologistProductRow::count)
+            .thenComparing(MonthlyMetricsResponse.CosmetologistProductRow::revenue)
+            .reversed());
+
     // Blindaje por rol. La cosmetóloga recibe SOLO lo suyo: los
     // procedimientos donde le tocó algo, y de esas filas únicamente su
     // parte. El bruto y la parte de la médica se ponen en cero antes de
@@ -119,11 +142,14 @@ public class MetricsService {
           products.cosmetologistShare());
 
       // El detalle de costo/ganancia es de Pili: la cosmetóloga no lo ve.
+      // OJO: cosmetologistProductDetail NO se toca — no lleva costo y es
+      // justamente el detalle que Gise necesita para su conteo mensual.
       productDetail = List.of();
     }
 
     return new MonthlyMetricsResponse(
-        year, month, context, procedures, products, productDetail);
+        year, month, context, procedures, products, productDetail,
+        cosmetologistProductDetail);
   }
 
   private void accumulate(
