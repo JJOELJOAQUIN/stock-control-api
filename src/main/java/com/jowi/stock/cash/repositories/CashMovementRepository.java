@@ -282,4 +282,23 @@ public interface CashMovementRepository
           AND c.items IS EMPTY
       """)
   Object[] salesTotalsLegacy(@Param("context") CashContext context);
+
+  /**
+   * Totales del día por método de pago y tipo (IN/OUT), para el cierre de caja.
+   * Filtra anulados (voided = false), como toda agregación. Devuelve filas
+   * [PaymentMethod, CashMovementType, SUM(amount)].
+   */
+  @Query("""
+        SELECT c.paymentMethod, c.type, COALESCE(SUM(c.amount), 0)
+        FROM CashMovement c
+        WHERE c.voided = false
+          AND c.context = :context
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
+        GROUP BY c.paymentMethod, c.type
+      """)
+  List<Object[]> dailyByMethod(
+      @Param("context") CashContext context,
+      @Param("from") java.time.Instant from,
+      @Param("to") java.time.Instant to);
 }
