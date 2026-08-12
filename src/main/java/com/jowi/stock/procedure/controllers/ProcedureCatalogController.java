@@ -2,6 +2,8 @@ package com.jowi.stock.procedure.controllers;
 
 import com.jowi.stock.procedure.dto.ProcedureCatalogRequest;
 import com.jowi.stock.procedure.dto.ProcedureCatalogResponse;
+import com.jowi.stock.procedure.dto.RecipeLineRequest;
+import com.jowi.stock.procedure.dto.RecipeLineResponse;
 import com.jowi.stock.procedure.services.ProcedureCatalogService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -65,5 +67,22 @@ public class ProcedureCatalogController {
       @PathVariable UUID id,
       @RequestParam boolean active) {
     return ResponseEntity.ok(service.setActive(id, active));
+  }
+
+  // ── Receta (BOM) del tratamiento ──
+  // Lectura ADMIN + COSMETOLOGA (Gise puede ver qué consume). Edición: ADMIN.
+
+  @GetMapping("/{id}/recipe")
+  @PreAuthorize("hasAnyRole('ADMIN', 'COSMETOLOGA')")
+  public ResponseEntity<List<RecipeLineResponse>> getRecipe(@PathVariable UUID id) {
+    return ResponseEntity.ok(service.getRecipe(id));
+  }
+
+  @PutMapping("/{id}/recipe")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<List<RecipeLineResponse>> setRecipe(
+      @PathVariable UUID id,
+      @Valid @RequestBody List<RecipeLineRequest> lines) {
+    return ResponseEntity.ok(service.setRecipe(id, lines));
   }
 }

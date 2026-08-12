@@ -2,6 +2,7 @@ package com.jowi.stock.procedure.dto;
 
 import com.jowi.stock.procedure.entities.ProcedureCatalog;
 import com.jowi.stock.procedure.enums.ProcedureKind;
+import com.jowi.stock.procedure.enums.ProcedureSpecialFlow;
 import com.jowi.stock.procedure.enums.ProcedureSplitRule;
 import java.math.BigDecimal;
 
@@ -19,7 +20,8 @@ public record ProcedureCatalogResponse(
     BigDecimal cosmetologistPercent,
     BigDecimal amount,
     boolean active,
-    ProcedureSplitRule splitRule) {
+    ProcedureSplitRule splitRule,
+    ProcedureSpecialFlow specialFlow) {
 
   public static ProcedureCatalogResponse from(ProcedureCatalog c, ProcedureSplitRule rule) {
     return new ProcedureCatalogResponse(
@@ -32,6 +34,7 @@ public record ProcedureCatalogResponse(
         c.getCosmetologistPercent(),
         c.getAmount(),
         c.isActive(),
-        rule);
+        rule,
+        c.getSpecialFlow());
   }
 }

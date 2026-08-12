@@ -1,5 +1,6 @@
 package com.jowi.stock.procedure.dto;
 
+import com.jowi.stock.procedure.enums.ProcedureSpecialFlow;
 import com.jowi.stock.procedure.enums.ProcedureSplitRule;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,5 +17,8 @@ public record ProcedureCatalogRequest(
     @NotBlank String code,
     @NotBlank String label,
     @NotNull ProcedureSplitRule splitRule,
-    BigDecimal amount) {
+    BigDecimal amount,
+    // Opcional: null = NONE (receta fija). El editor de receta se maneja
+    // aparte, en su propio endpoint.
+    ProcedureSpecialFlow specialFlow) {
 }

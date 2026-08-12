@@ -3,6 +3,7 @@ package com.jowi.stock.procedure.entities;
 import com.jowi.stock.cash.enums.CashActor;
 import com.jowi.stock.common.BaseEntity;
 import com.jowi.stock.procedure.enums.ProcedureKind;
+import com.jowi.stock.procedure.enums.ProcedureSpecialFlow;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
@@ -55,6 +56,22 @@ public class ProcedureCatalog extends BaseEntity {
 
   @Column(nullable = false)
   private boolean active = true;
+
+  /**
+   * Cómo se consume el insumo: receta fija (NONE) o flujo especial de vial
+   * (TOXINA_VIAL). Los tratamientos NONE usan procedure_consumption.
+   */
+  @Enumerated(EnumType.STRING)
+  @Column(name = "special_flow", nullable = false, length = 20)
+  private ProcedureSpecialFlow specialFlow = ProcedureSpecialFlow.NONE;
+
+  public ProcedureSpecialFlow getSpecialFlow() {
+    return specialFlow;
+  }
+
+  public void setSpecialFlow(ProcedureSpecialFlow specialFlow) {
+    this.specialFlow = specialFlow;
+  }
 
   public String getCode() {
     return code;
