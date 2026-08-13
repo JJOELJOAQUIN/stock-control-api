@@ -262,7 +262,10 @@ public class ProductServiceImpl implements ProductService {
               product.getSalePrice(),
               product.getDefaultMarkupPercentage(),
               product.getShelfLifeMonths(),
-              product.getRestockPriority());
+              product.getRestockPriority(),
+              product.getConsumptionUnit() == null
+                  ? null
+                  : product.getConsumptionUnit().name());
         })
         .toList();
   }

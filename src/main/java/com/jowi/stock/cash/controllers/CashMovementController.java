@@ -19,6 +19,12 @@ import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
 import com.jowi.stock.cash.services.CashMovementService;
 import com.jowi.stock.cash.services.CashVoidService;
+import com.jowi.stock.treatment.entities.Treatment;
+import com.jowi.stock.treatment.repositories.TreatmentRepository;
+
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/cash-movements")
@@ -26,13 +32,15 @@ public class CashMovementController {
 
   private final CashMovementService service;
   private final CashVoidService voidService;
+  private final TreatmentRepository treatmentRepository;
 
- 
   public CashMovementController(
       CashMovementService service,
-      CashVoidService voidService) {
+      CashVoidService voidService,
+      TreatmentRepository treatmentRepository) {
     this.service = service;
     this.voidService = voidService;
+    this.treatmentRepository = treatmentRepository;
   }
 
   @PostMapping
@@ -52,7 +60,23 @@ public class CashMovementController {
       Pageable pageable) {
     Page<CashMovement> page = service.search(context, type, source, dateFrom, dateTo, q, pageable);
 
-    return ResponseEntity.ok(page.map(CashMovementResponse::from));
+    // Enriquecemos con el nombre del paciente para los pagos de tratamiento
+    // (reference_id = treatmentId). Se resuelve en lote para no hacer N+1.
+    var treatmentIds = page.getContent().stream()
+        .filter(m -> m.getSource() == CashSource.PROCEDURE && m.getReferenceId() != null)
+        .map(CashMovement::getReferenceId)
+        .collect(Collectors.toSet());
+
+    Map<UUID, String> names = treatmentIds.isEmpty()
+        ? Map.of()
+        : treatmentRepository.findAllById(treatmentIds).stream()
+            .collect(Collectors.toMap(
+                Treatment::getId,
+                t -> (t.getPatient().getFirstName() + " " + t.getPatient().getLastName()).trim()));
+
+    return ResponseEntity.ok(page.map(m -> CashMovementResponse.from(
+        m,
+        m.getReferenceId() == null ? null : names.get(m.getReferenceId()))));
   }
 
   @GetMapping("/daily-split")

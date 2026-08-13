@@ -31,8 +31,15 @@ public record CashMovementResponse(
     boolean voided,
     Instant voidedAt,
     String voidReason,
-    String voidedBy) {
+    String voidedBy,
+    // Nombre del paciente cuando el movimiento es el pago de un tratamiento
+    // (reference_id = treatmentId). null para ventas/compras sueltas.
+    String patientName) {
   public static CashMovementResponse from(CashMovement m) {
+    return from(m, null);
+  }
+
+  public static CashMovementResponse from(CashMovement m, String patientName) {
     return new CashMovementResponse(
         m.getId(),
         m.getType(),
@@ -51,6 +58,7 @@ public record CashMovementResponse(
         m.isVoided(),
         m.getVoidedAt(),
         m.getVoidReason(),
-        m.getVoidedBy());
+        m.getVoidedBy(),
+        patientName);
   }
 }

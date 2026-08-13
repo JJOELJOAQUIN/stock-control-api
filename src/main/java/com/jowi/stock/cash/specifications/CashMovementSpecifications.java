@@ -2,6 +2,7 @@ package com.jowi.stock.cash.specifications;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import org.springframework.data.jpa.domain.Specification;
 
@@ -11,6 +12,7 @@ import com.jowi.stock.cash.enums.CashActor;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.cash.enums.CashMovementType;
 import com.jowi.stock.cash.enums.CashSource;
+import com.jowi.stock.treatment.entities.Treatment;
 
 /**
  * Filtros componibles para la búsqueda de movimientos de caja.
@@ -52,16 +54,36 @@ public final class CashMovementSpecifications {
         : cb.lessThan(root.get("createdAt"), to);
   }
 
-  /** Busca el texto (case-insensitive) tanto en comentario como en detalle. */
+  /**
+   * Busca el texto (case-insensitive) en comentario, detalle, y —clave para
+   * peeling/toxina— en el nombre del PACIENTE: los pagos de tratamiento tienen
+   * reference_id = treatmentId, y el Treatment tiene su Patient. Así "Sofia" o
+   * "Crivelli" traen sus movimientos aunque el comentario sólo diga "Pago 1 -
+   * ...".
+   */
   public static Specification<CashMovement> textContains(String q) {
     return (root, query, cb) -> {
       if (q == null || q.isBlank()) {
         return null;
       }
       String like = "%" + q.trim().toLowerCase() + "%";
+
+      var sub = query.subquery(UUID.class);
+      var t = sub.from(Treatment.class);
+      var patient = t.get("patient");
+      sub.select(t.get("id")).where(
+          cb.or(
+              cb.like(cb.lower(patient.get("firstName")), like),
+              cb.like(cb.lower(patient.get("lastName")), like),
+              cb.like(
+                  cb.lower(cb.concat(cb.concat(patient.get("firstName"), " "),
+                      patient.get("lastName"))),
+                  like)));
+
       return cb.or(
           cb.like(cb.lower(cb.coalesce(root.get("comment"), "")), like),
-          cb.like(cb.lower(cb.coalesce(root.get("detail"), "")), like));
+          cb.like(cb.lower(cb.coalesce(root.get("detail"), "")), like),
+          root.get("referenceId").in(sub));
     };
   }
 

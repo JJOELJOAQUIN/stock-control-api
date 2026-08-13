@@ -18,5 +18,6 @@ public record ProductWithStockResponse(
         BigDecimal salePrice,
         BigDecimal defaultMarkupPercentage,
         Integer shelfLifeMonths,
-        Integer restockPriority) {
+        Integer restockPriority,
+        String consumptionUnit) {
 }
