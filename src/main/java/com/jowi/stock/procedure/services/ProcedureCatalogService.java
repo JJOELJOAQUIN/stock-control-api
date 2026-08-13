@@ -62,10 +62,22 @@ public class ProcedureCatalogService {
 
   public ProcedureCatalogResponse create(ProcedureCatalogRequest req) {
     String code = normalizeCode(req.code());
-    if (repository.existsByCodeIgnoreCase(code)) {
-      throw new IllegalArgumentException(
-          "Ya existe un tratamiento con el código " + code);
+
+    ProcedureCatalog existing = repository.findByCodeIgnoreCase(code).orElse(null);
+    if (existing != null) {
+      // Activo → duplicado real. Dado de baja → lo revivimos con los datos
+      // nuevos: el código es la identidad y no se duplica; "borrar" y volver a
+      // crear el mismo código es, en los hechos, reactivarlo.
+      if (existing.isActive()) {
+        throw new IllegalArgumentException(
+            "Ya existe un tratamiento con el código " + code);
+      }
+      existing.setActive(true);
+      apply(existing, req);
+      ProcedureCatalog revived = repository.save(existing);
+      return ProcedureCatalogResponse.from(revived, req.splitRule());
     }
+
     ProcedureCatalog c = new ProcedureCatalog();
     c.setCode(code);
     apply(c, req);
