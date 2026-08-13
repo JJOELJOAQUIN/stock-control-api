@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import com.jowi.stock.toxina.dto.CreateToxinaTreatmentRequest;
 import com.jowi.stock.toxina.dto.RegisterToxinaSessionRequest;
 import com.jowi.stock.toxina.dto.ToxinaSessionResponse;
+import com.jowi.stock.toxina.dto.ToxinaTreatmentResponse;
 import com.jowi.stock.toxina.services.ToxinaService;
 import com.jowi.stock.treatment.dto.TreatmentResponse;
 
@@ -25,6 +26,11 @@ public class ToxinaController {
 
   public ToxinaController(ToxinaService service) {
     this.service = service;
+  }
+
+  @GetMapping("/treatments")
+  public ResponseEntity<List<ToxinaTreatmentResponse>> listTreatments() {
+    return ResponseEntity.ok(service.listTreatments());
   }
 
   @PostMapping("/treatments")

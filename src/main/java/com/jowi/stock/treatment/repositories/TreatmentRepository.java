@@ -10,4 +10,5 @@ public interface TreatmentRepository extends JpaRepository<Treatment, UUID> {
   List<Treatment> findByPatientId(UUID patientId);
   List<Treatment> findByStatusIn(List<TreatmentStatus> statuses);
   List<Treatment> findAllByOrderByStatusAscCreatedAtDesc();
+  List<Treatment> findByCodeOrderByCreatedAtDesc(String code);
 }

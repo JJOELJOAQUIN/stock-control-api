@@ -15,6 +15,9 @@ import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.services.StockService;
 import com.jowi.stock.toxina.entities.OpenVial;
 import com.jowi.stock.toxina.entities.ToxinaSession;
+import com.jowi.stock.toxina.dto.ToxinaSessionResponse;
+import com.jowi.stock.toxina.dto.ToxinaTreatmentResponse;
+import com.jowi.stock.treatment.repositories.TreatmentRepository;
 import com.jowi.stock.toxina.enums.OpenVialStatus;
 import com.jowi.stock.toxina.repositories.OpenVialRepository;
 import com.jowi.stock.toxina.repositories.ToxinaSessionRepository;
@@ -49,18 +52,21 @@ public class ToxinaService {
   private final ProductService productService;
   private final OpenVialRepository openVialRepository;
   private final ToxinaSessionRepository toxinaSessionRepository;
+  private final TreatmentRepository treatmentRepository;
 
   public ToxinaService(
       TreatmentService treatmentService,
       StockService stockService,
       ProductService productService,
       OpenVialRepository openVialRepository,
-      ToxinaSessionRepository toxinaSessionRepository) {
+      ToxinaSessionRepository toxinaSessionRepository,
+      TreatmentRepository treatmentRepository) {
     this.treatmentService = treatmentService;
     this.stockService = stockService;
     this.productService = productService;
     this.openVialRepository = openVialRepository;
     this.toxinaSessionRepository = toxinaSessionRepository;
+    this.treatmentRepository = treatmentRepository;
   }
 
   // ======================= TRATAMIENTO =======================
@@ -122,6 +128,23 @@ public class ToxinaService {
 
   public List<ToxinaSession> getSessions(UUID treatmentId) {
     return toxinaSessionRepository.findByTreatmentIdOrderBySessionNumberAsc(treatmentId);
+  }
+
+  /**
+   * Listado para la tabla de toxina: cada tratamiento (code = TOXINA_XEOMIN)
+   * con sus sesiones (unidades, fecha, vial). Del más nuevo al más viejo.
+   */
+  public List<ToxinaTreatmentResponse> listTreatments() {
+    return treatmentRepository.findByCodeOrderByCreatedAtDesc(CODE).stream()
+        .map(t -> {
+          List<ToxinaSessionResponse> sessions =
+              toxinaSessionRepository.findByTreatmentIdOrderBySessionNumberAsc(t.getId())
+                  .stream()
+                  .map(ToxinaSessionResponse::from)
+                  .toList();
+          return ToxinaTreatmentResponse.from(t, sessions);
+        })
+        .toList();
   }
 
   // ======================= VIAL =======================
