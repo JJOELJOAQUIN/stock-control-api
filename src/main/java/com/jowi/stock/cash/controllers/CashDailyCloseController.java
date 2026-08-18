@@ -13,13 +13,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Cierre de caja diario. Lo maneja la médica (ADMIN): ve efectivo vs
- * transferencia del día y lo cierra. La cosmetóloga no accede a los totales
- * globales de caja.
+ * Cierre de caja diario: preview, cierre e historial. Accesible por ADMIN y
+ * COSMETOLOGA.
  */
 @RestController
 @RequestMapping("/api/cash/close")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN', 'COSMETOLOGA')")
 public class CashDailyCloseController {
 
   private final CashDailyCloseService service;
