@@ -21,6 +21,7 @@ import com.jowi.stock.cash.enums.PaymentMethod;
 import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.cash.specifications.CashMovementSpecifications;
 import com.jowi.stock.auth.CurrentUserService;
+import com.jowi.stock.common.BusinessZone;
 import com.jowi.stock.procedure.entities.ProcedureCatalog;
 import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
 import com.jowi.stock.cash.dto.CashItemSpec;
@@ -357,15 +358,14 @@ public class CashMovementService {
       String q,
       Pageable pageable) {
 
-    java.time.ZoneId zone = java.time.ZoneId.systemDefault();
-
+    // Rango en hora Argentina (BusinessZone), no en la zona de la JVM.
     java.time.Instant from = dateFrom == null
         ? null
-        : dateFrom.atStartOfDay(zone).toInstant();
+        : BusinessZone.startOfDay(dateFrom);
 
     java.time.Instant to = dateTo == null
         ? null
-        : dateTo.plusDays(1).atStartOfDay(zone).toInstant();
+        : BusinessZone.ofDay(dateTo).to();
 
     Specification<CashMovement> spec = Specification
         .where(CashMovementSpecifications.hasContext(context))
@@ -396,15 +396,15 @@ public class CashMovementService {
     }
 
     if (date == null) {
-      date = java.time.LocalDate.now();
+      date = BusinessZone.today();
     }
 
-    java.time.ZoneId zone = java.time.ZoneId.systemDefault();
+    // El día se delimita en hora Argentina: un cobro de las 21:00–23:59
+    // AR es de HOY, aunque en UTC caiga en la madrugada de mañana.
+    BusinessZone.Range range = BusinessZone.ofDay(date);
 
-    java.time.Instant from = date.atStartOfDay(zone).toInstant();
-    java.time.Instant to = date.plusDays(1).atStartOfDay(zone).toInstant();
-
-    Object[] result = repository.cashSplitByContextAndDateRange(context, from, to);
+    Object[] result = repository.cashSplitByContextAndDateRange(
+        context, range.from(), range.to());
 
     Object[] row = (Object[]) result[0];
 
@@ -440,18 +440,16 @@ public class CashMovementService {
     }
 
     if (date == null) {
-      date = java.time.LocalDate.now();
+      date = BusinessZone.today();
     }
 
-    java.time.ZoneId zone = java.time.ZoneId.systemDefault();
-
-    java.time.Instant from = date.atStartOfDay(zone).toInstant();
-    java.time.Instant to = date.plusDays(1).atStartOfDay(zone).toInstant();
+    // Mismo criterio de día en hora Argentina que dailySplit.
+    BusinessZone.Range range = BusinessZone.ofDay(date);
 
     Object[] items = (Object[]) repository
-        .cosmetologistProductionSplitFromItems(context, from, to)[0];
+        .cosmetologistProductionSplitFromItems(context, range.from(), range.to())[0];
     Object[] legacy = (Object[]) repository
-        .cosmetologistProductionSplitLegacy(context, from, to)[0];
+        .cosmetologistProductionSplitLegacy(context, range.from(), range.to())[0];
 
     return new CashCosmetologistSplitResponse(
         date,

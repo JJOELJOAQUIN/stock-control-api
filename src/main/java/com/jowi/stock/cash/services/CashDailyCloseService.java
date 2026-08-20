@@ -12,7 +12,7 @@ import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import com.jowi.stock.common.BusinessZone;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -106,9 +106,10 @@ public class CashDailyCloseService {
   // ── Cálculo ──
 
   private Totals computeTotals(CashContext context, LocalDate day) {
-    ZoneId zone = ZoneId.systemDefault();
-    Instant from = day.atStartOfDay(zone).toInstant();
-    Instant to = day.plusDays(1).atStartOfDay(zone).toInstant();
+    // Día en hora Argentina (BusinessZone), no en la zona de la JVM.
+    BusinessZone.Range range = BusinessZone.ofDay(day);
+    Instant from = range.from();
+    Instant to = range.to();
 
     Totals t = new Totals();
     for (Object[] row : movementRepository.dailyByMethod(context, from, to)) {

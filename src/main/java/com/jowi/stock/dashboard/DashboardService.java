@@ -8,10 +8,10 @@ import com.jowi.stock.cash.repositories.CashMovementRepository;
 import com.jowi.stock.movement.enums.StockMovementType;
 import com.jowi.stock.movement.repositories.StockMovementRepository;
 import com.jowi.stock.product.repositories.ProductRepository;
+import com.jowi.stock.common.BusinessZone;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.OffsetDateTime;
 import java.time.Instant; 
 import java.util.List;
 
@@ -59,15 +59,32 @@ public class DashboardService {
 
     public List<CashMonthlyKpiResponse> getCashMonthly(int year, CashContext context) {
 
-        return cashMovementRepository.aggregateMonthly(year, context)
-                .stream()
-                .map(row -> new CashMonthlyKpiResponse(
-                        ((Number) row[0]).intValue(),
-                        (BigDecimal) row[1],
-                        (BigDecimal) row[2],
-                        (BigDecimal) row[3],
-                        (BigDecimal) row[4]))
-                .toList();
+        // Un agregado por mes, con el mes delimitado en hora Argentina
+        // (BusinessZone) en vez de agrupar por MONTH() en la base. Se incluye
+        // sólo el mes que tuvo movimiento, igual que hacía el GROUP BY MONTH.
+        List<CashMonthlyKpiResponse> result = new java.util.ArrayList<>();
+
+        for (int month = 1; month <= 12; month++) {
+            BusinessZone.Range range = BusinessZone.ofMonth(year, month);
+            Object[] row = cashMovementRepository.aggregateRange(
+                    context, range.from(), range.to());
+
+            BigDecimal in = (BigDecimal) row[0];
+            BigDecimal out = (BigDecimal) row[1];
+            BigDecimal retention = (BigDecimal) row[2];
+            BigDecimal net = (BigDecimal) row[3];
+
+            boolean hadActivity =
+                    in.compareTo(BigDecimal.ZERO) != 0
+                    || out.compareTo(BigDecimal.ZERO) != 0;
+            if (!hadActivity) {
+                continue;
+            }
+
+            result.add(new CashMonthlyKpiResponse(month, in, out, retention, net));
+        }
+
+        return result;
     }
 
     // =========================
@@ -90,9 +107,8 @@ public class DashboardService {
 
         long totalMovements = movementRepository.countByContext(context);
 
-        Instant startOfDay = OffsetDateTime.now()
-                .withHour(0).withMinute(0).withSecond(0).withNano(0)
-                .toInstant();
+        // Inicio del día en hora Argentina (no en el offset del server).
+        Instant startOfDay = BusinessZone.startOfDay(BusinessZone.today());
 
         long movementsToday = movementRepository.countByContextAndCreatedAtAfter(context, startOfDay);
 
@@ -110,12 +126,17 @@ public class DashboardService {
             int month,
             CashContext context) {
 
-        Object[] curr = cashMovementRepository.aggregateMonth(year, month, context);
+        // Mes actual y anterior, cada uno delimitado en hora Argentina.
+        BusinessZone.Range currRange = BusinessZone.ofMonth(year, month);
+        Object[] curr = cashMovementRepository.aggregateRange(
+                context, currRange.from(), currRange.to());
 
         int prevYear = (month == 1) ? year - 1 : year;
         int prevMonth = (month == 1) ? 12 : month - 1;
 
-        Object[] prev = cashMovementRepository.aggregateMonth(prevYear, prevMonth, context);
+        BusinessZone.Range prevRange = BusinessZone.ofMonth(prevYear, prevMonth);
+        Object[] prev = cashMovementRepository.aggregateRange(
+                context, prevRange.from(), prevRange.to());
 
         BigDecimal income = (BigDecimal) curr[0];
         BigDecimal expense = (BigDecimal) curr[1];

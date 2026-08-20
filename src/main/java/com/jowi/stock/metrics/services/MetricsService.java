@@ -4,11 +4,10 @@ import com.jowi.stock.auth.CurrentUserService;
 import com.jowi.stock.cash.enums.CashContext;
 import com.jowi.stock.metrics.dto.MonthlyMetricsResponse;
 import com.jowi.stock.metrics.repositories.MetricsRepository;
+import com.jowi.stock.common.BusinessZone;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +15,7 @@ import java.util.Map;
 
 @Service
 public class MetricsService {
+
 
   private final MetricsRepository repository;
   private final CurrentUserService currentUserService;
@@ -31,10 +31,15 @@ public class MetricsService {
     if (context == null) throw new IllegalArgumentException("context is required");
     if (month < 1 || month > 12) throw new IllegalArgumentException("month must be 1..12");
 
-    ZoneId zone = ZoneId.systemDefault();
-    LocalDate first = LocalDate.of(year, month, 1);
-    Instant from = first.atStartOfDay(zone).toInstant();
-    Instant to = first.plusMonths(1).atStartOfDay(zone).toInstant();
+    // El primer día del mes a las 00:00 hora Argentina, convertido a Instant.
+    // atStartOfDay(ZONE) resuelve el inicio del día EN la zona del negocio y
+    // luego lo lleva a tiempo absoluto, que es lo que compara el repositorio
+    // (createdAt es un Instant). Así el mes va de [1 del mes 00:00 AR, 1 del
+    // mes siguiente 00:00 AR).
+    // Mes delimitado en hora Argentina, fuente única en BusinessZone.
+    BusinessZone.Range range = BusinessZone.ofMonth(year, month);
+    Instant from = range.from();
+    Instant to = range.to();
 
     // Un procedimiento puede venir por su flujo propio o dentro de una venta
     // combinada. Se acumulan por código para que la métrica no dependa de
@@ -61,7 +66,7 @@ public class MetricsService {
             .thenComparing(MonthlyMetricsResponse.ProcedureMetricRow::amount)
             .reversed());
 
-    Object[] ph = first(repository.productsFromHeader(context, from, to));
+    Objec t[] ph = first(repository.productsFromHeader(context, from, to));
     Object[] pi = first(repository.productsFromItems(context, from, to));
 
     MonthlyMetricsResponse.ProductMetricRow products =

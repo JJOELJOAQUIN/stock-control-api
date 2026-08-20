@@ -104,24 +104,16 @@ public interface CashMovementRepository
       """)
   BigDecimal sumRetentionByPaymentMethod(PaymentMethod method);
 
-  @Query("""
-        SELECT
-          MONTH(c.createdAt),
-          SUM(CASE WHEN c.type = 'IN'  THEN c.amount ELSE 0 END),
-          SUM(CASE WHEN c.type = 'OUT' THEN c.amount ELSE 0 END),
-          SUM(c.retention),
-          SUM(c.netAmount)
-        FROM CashMovement c
-        WHERE c.voided = false
-          AND YEAR(c.createdAt) = :year
-          AND (:context IS NULL OR c.context = :context)
-        GROUP BY MONTH(c.createdAt)
-        ORDER BY MONTH(c.createdAt)
-      """)
-  List<Object[]> aggregateMonthly(
-      @Param("year") int year,
-      @Param("context") CashContext context);
 
+
+  /**
+   * Agregado de caja (ingresos, egresos, retención, neto) para un rango
+   * [from, to) en tiempo absoluto. Reemplaza a las agregaciones que filtraban
+   * con YEAR()/MONTH() sobre createdAt: esas corrían en el timezone de la
+   * sesión de Postgres, así que un cobro de la noche AR caía en el mes UTC
+   * siguiente. El rango se arma en hora Argentina desde el service
+   * (BusinessZone) y acá sólo se compara contra el Instant, timezone-safe.
+   */
   @Query("""
         SELECT
           COALESCE(SUM(CASE WHEN c.type = 'IN'  THEN c.amount ELSE 0 END), 0),
@@ -130,15 +122,18 @@ public interface CashMovementRepository
           COALESCE(SUM(c.netAmount), 0)
         FROM CashMovement c
         WHERE c.voided = false
-          AND YEAR(c.createdAt) = :year
-          AND MONTH(c.createdAt) = :month
           AND (:context IS NULL OR c.context = :context)
+          AND c.createdAt >= :from
+          AND c.createdAt < :to
       """)
-  Object[] aggregateMonth(
-      @Param("year") int year,
-      @Param("month") int month,
-      @Param("context") CashContext context);
+  Object[] aggregateRange(
+      @Param("context") CashContext context,
+      @Param("from") java.time.Instant from,
+      @Param("to") java.time.Instant to);
 
+  // NOTA: sin uso en el código y NO timezone-safe (YEAR/MONTH corren en la
+  // zona de la sesión de Postgres). Si se necesita, migrar a aggregateRange
+  // con BusinessZone.ofMonth como el resto. Se deja para no ampliar el diff.
   @Query("""
           SELECT
             COALESCE(SUM(c.netAmount), 0),
