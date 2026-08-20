@@ -66,7 +66,7 @@ public class MetricsService {
             .thenComparing(MonthlyMetricsResponse.ProcedureMetricRow::amount)
             .reversed());
 
-    Objec t[] ph = first(repository.productsFromHeader(context, from, to));
+    Object[] ph = first(repository.productsFromHeader(context, from, to));
     Object[] pi = first(repository.productsFromItems(context, from, to));
 
     MonthlyMetricsResponse.ProductMetricRow products =
