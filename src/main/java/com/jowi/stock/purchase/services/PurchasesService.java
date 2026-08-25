@@ -53,7 +53,11 @@ public class PurchasesService {
           new OrderAccumulator(
               cashId,
               (Instant) r[1],
-              (String) r[2],
+              // paymentMethod es un enum (PaymentMethod), no String:
+              // @Enumerated(STRING) afecta el guardado, no el tipo que
+              // devuelve JPQL. Castearlo a String tiraba ClassCastException
+              // (500) apenas la query traía filas. toString() = su nombre.
+              r[2] == null ? null : r[2].toString(),
               (String) r[3]));
 
       BigDecimal subtotal = dec(r[7]);
