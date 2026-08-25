@@ -6,11 +6,11 @@ import com.jowi.stock.purchase.dto.MonthlyPurchasesResponse;
 import com.jowi.stock.purchase.dto.MonthlyPurchasesResponse.PurchaseItemRow;
 import com.jowi.stock.purchase.dto.MonthlyPurchasesResponse.PurchaseOrderRow;
 import com.jowi.stock.purchase.repositories.PurchaseItemRepository;
+import com.jowi.stock.common.BusinessZone;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -38,10 +38,11 @@ public class PurchasesService {
       return new MonthlyPurchasesResponse(year, month, context, BigDecimal.ZERO, List.of());
     }
 
-    ZoneId zone = ZoneId.systemDefault();
-    LocalDate first = LocalDate.of(year, month, 1);
-    Instant from = first.atStartOfDay(zone).toInstant();
-    Instant to = first.plusMonths(1).atStartOfDay(zone).toInstant();
+    // Mes delimitado en hora Argentina (BusinessZone), no en la zona de
+    // la JVM: en Railway systemDefault() era UTC y corría el borde del mes.
+    BusinessZone.Range range = BusinessZone.ofMonth(year, month);
+    Instant from = range.from();
+    Instant to = range.to();
 
     // Agrupo los ítems por orden preservando el orden de llegada (fecha desc).
     Map<String, OrderAccumulator> byOrder = new LinkedHashMap<>();
