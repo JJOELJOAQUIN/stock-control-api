@@ -24,4 +24,4 @@ security:
   firebase:
     enabled: true
 firebase:
-  service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_BASE64}    
+  service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_BASE64}

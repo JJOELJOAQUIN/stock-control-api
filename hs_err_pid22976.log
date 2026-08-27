@@ -186,7 +186,7 @@ Usage:
 Virtual space:
   Non-class space:      128.00 MB reserved,      86.69 MB ( 68%) committed,  2 nodes.
       Class space:        1.00 GB reserved,      10.69 MB (  1%) committed,  1 nodes.
-             Both:        1.12 GB reserved,      97.38 MB (  8%) committed. 
+             Both:        1.12 GB reserved,      97.38 MB (  8%) committed.
 
 Chunk freelists:
    Non-Class:  8.98 MB
@@ -561,45 +561,45 @@ Classes redefined (0 events):
 No events
 
 Internal exceptions (20 events):
-Event: 250607.972 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5898a40}> (0x00000000d5898a40) 
+Event: 250607.972 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5898a40}> (0x00000000d5898a40)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250607.973 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5899400}> (0x00000000d5899400) 
+Event: 250607.973 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5899400}> (0x00000000d5899400)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250607.978 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589a3e0}> (0x00000000d589a3e0) 
+Event: 250607.978 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589a3e0}> (0x00000000d589a3e0)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250607.978 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589aff8}> (0x00000000d589aff8) 
+Event: 250607.978 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589aff8}> (0x00000000d589aff8)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250607.990 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589ca08}> (0x00000000d589ca08) 
+Event: 250607.990 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589ca08}> (0x00000000d589ca08)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250607.990 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589d118}> (0x00000000d589d118) 
+Event: 250607.990 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589d118}> (0x00000000d589d118)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250608.007 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d58bca58}> (0x00000000d58bca58) 
+Event: 250608.007 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d58bca58}> (0x00000000d58bca58)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250608.007 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d58bd418}> (0x00000000d58bd418) 
+Event: 250608.007 Thread 0x000001c09d5941c0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d58bd418}> (0x00000000d58bd418)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250609.452 Thread 0x000001c09d592e10 Exception <a 'java/io/FileNotFoundException'{0x00000000d5899af0}> (0x00000000d5899af0) 
+Event: 250609.452 Thread 0x000001c09d592e10 Exception <a 'java/io/FileNotFoundException'{0x00000000d5899af0}> (0x00000000d5899af0)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250610.258 Thread 0x000001c09d592e10 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d59cd890}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000d59cd890) 
+Event: 250610.258 Thread 0x000001c09d592e10 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d59cd890}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.invokeVirtual(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000d59cd890)
 thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 773]
-Event: 250610.345 Thread 0x000001c09d59a430 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d59697c8}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(java.lang.Object, long, java.lang.Object, java.lang.Object)'> (0x00000000d59697c8) 
+Event: 250610.345 Thread 0x000001c09d59a430 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d59697c8}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(java.lang.Object, long, java.lang.Object, java.lang.Object)'> (0x00000000d59697c8)
 thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 773]
-Event: 250610.519 Thread 0x000001c09d59a430 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5585128}> (0x00000000d5585128) 
+Event: 250610.519 Thread 0x000001c09d59a430 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5585128}> (0x00000000d5585128)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250610.520 Thread 0x000001c09d59a430 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5586480}> (0x00000000d5586480) 
+Event: 250610.520 Thread 0x000001c09d59a430 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5586480}> (0x00000000d5586480)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250610.691 Thread 0x000001c09d59a430 Exception <a 'java/io/FileNotFoundException'{0x00000000d5698268}> (0x00000000d5698268) 
+Event: 250610.691 Thread 0x000001c09d59a430 Exception <a 'java/io/FileNotFoundException'{0x00000000d5698268}> (0x00000000d5698268)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250610.692 Thread 0x000001c09d59a430 Exception <a 'java/io/FileNotFoundException'{0x00000000d5699530}> (0x00000000d5699530) 
+Event: 250610.692 Thread 0x000001c09d59a430 Exception <a 'java/io/FileNotFoundException'{0x00000000d5699530}> (0x00000000d5699530)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250610.782 Thread 0x000001c09d59a430 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d578b748}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.newInvokeSpecial(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000d578b748) 
+Event: 250610.782 Thread 0x000001c09d59a430 Exception <a 'java/lang/NoSuchMethodError'{0x00000000d578b748}: 'java.lang.Object java.lang.invoke.DirectMethodHandle$Holder.newInvokeSpecial(java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object, java.lang.Object)'> (0x00000000d578b748)
 thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 773]
-Event: 250620.840 Thread 0x000001c09d597640 Exception <a 'java/lang/ClassNotFoundException'{0x00000000d57e0d90}: sun/util/logging/resources/spi/loggingProvider> (0x00000000d57e0d90) 
+Event: 250620.840 Thread 0x000001c09d597640 Exception <a 'java/lang/ClassNotFoundException'{0x00000000d57e0d90}: sun/util/logging/resources/spi/loggingProvider> (0x00000000d57e0d90)
 thrown [s\src\hotspot\share\classfile\systemDictionary.cpp, line 312]
-Event: 250790.482 Thread 0x000001c09b4d3df0 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000d5864a30}: Found class java.lang.Object, but interface was expected> (0x00000000d5864a30) 
+Event: 250790.482 Thread 0x000001c09b4d3df0 Exception <a 'java/lang/IncompatibleClassChangeError'{0x00000000d5864a30}: Found class java.lang.Object, but interface was expected> (0x00000000d5864a30)
 thrown [s\src\hotspot\share\interpreter\linkResolver.cpp, line 840]
-Event: 250905.852 Thread 0x000001c09f7905f0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5899700}> (0x00000000d5899700) 
+Event: 250905.852 Thread 0x000001c09f7905f0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d5899700}> (0x00000000d5899700)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
-Event: 250905.855 Thread 0x000001c09f7905f0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589a0c0}> (0x00000000d589a0c0) 
+Event: 250905.855 Thread 0x000001c09f7905f0 Exception <a 'sun/nio/fs/WindowsException'{0x00000000d589a0c0}> (0x00000000d589a0c0)
 thrown [s\src\hotspot\share\prims\jni.cpp, line 520]
 
 ZGC Phase Switch (0 events):
@@ -756,7 +756,7 @@ dbghelp: loaded successfully - version: 4.0.5 - missing functions: none
 symbol engine: initialized successfully - sym options: 0x614 - pdb path: .;c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\jre\21.0.9-win32-x86_64\bin;C:\WINDOWS\SYSTEM32;C:\WINDOWS\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.7309_none_3e05feeae336a044;c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\jre\21.0.9-win32-x86_64\bin\server;C:\Users\jlopez\AppData\Roaming\Code\User\globalStorage\redhat.java\1.50.0\config_win\org.eclipse.equinox.launcher\org.eclipse.equinox.launcher.win32.win32.x86_64_1.2.1400.v20250801-0854;C:\Users\jlopez\AppData\Local\Temp\jna--1157119336
 
 VM Arguments:
-jvm_args: --add-modules=ALL-SYSTEM --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/sun.nio.fs=ALL-UNNAMED -Declipse.application=org.eclipse.jdt.ls.core.id1 -Dosgi.bundles.defaultStartLevel=4 -Declipse.product=org.eclipse.jdt.ls.core.product -Djava.import.generatesMetadataFilesAtProjectRoot=false -DDetectVMInstallationsJob.disabled=true -Dfile.encoding=utf8 -XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable -javaagent:c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\lombok\lombok-1.18.39-4050.jar -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=c:\Users\jlopez\AppData\Roaming\Code\User\workspaceStorage\8a7390b30fe8371d481e61286178eb1e\redhat.java -Daether.dependencyCollector.impl=bf 
+jvm_args: --add-modules=ALL-SYSTEM --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/sun.nio.fs=ALL-UNNAMED -Declipse.application=org.eclipse.jdt.ls.core.id1 -Dosgi.bundles.defaultStartLevel=4 -Declipse.product=org.eclipse.jdt.ls.core.product -Djava.import.generatesMetadataFilesAtProjectRoot=false -DDetectVMInstallationsJob.disabled=true -Dfile.encoding=utf8 -XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable -javaagent:c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\lombok\lombok-1.18.39-4050.jar -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=c:\Users\jlopez\AppData\Roaming\Code\User\workspaceStorage\8a7390b30fe8371d481e61286178eb1e\redhat.java -Daether.dependencyCollector.impl=bf
 java_command: c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\server\plugins\org.eclipse.equinox.launcher_1.7.100.v20251111-0406.jar -configuration c:\Users\jlopez\AppData\Roaming\Code\User\globalStorage\redhat.java\1.50.0\config_win -data c:\Users\jlopez\AppData\Roaming\Code\User\workspaceStorage\8a7390b30fe8371d481e61286178eb1e\redhat.java\jdt_ws --pipe=\\.\pipe\lsp-93b91650f491689a50fe43df487f599d-sock
 java_class_path (initial): c:\Users\jlopez\.vscode\extensions\redhat.java-1.50.0-win32-x64\server\plugins\org.eclipse.equinox.launcher_1.7.100.v20251111-0406.jar
 Launcher Type: SUN_STANDARD
@@ -790,8 +790,8 @@ Log output configuration:
  #1: stderr all=off uptime,level,tags foldmultilines=false
 
 Release file:
-JAVA_VERSION="21.0.9" 
-MODULES="java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.internal.opt jdk.zipfs jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.crypto.mscapi jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.internal.le jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom" 
+JAVA_VERSION="21.0.9"
+MODULES="java.base java.compiler java.datatransfer java.xml java.prefs java.desktop java.instrument java.logging java.management java.security.sasl java.naming java.rmi java.management.rmi java.net.http java.scripting java.security.jgss java.transaction.xa java.sql java.sql.rowset java.xml.crypto java.se java.smartcardio jdk.accessibility jdk.internal.jvmstat jdk.attach jdk.charsets jdk.internal.opt jdk.zipfs jdk.compiler jdk.crypto.ec jdk.crypto.cryptoki jdk.crypto.mscapi jdk.dynalink jdk.internal.ed jdk.editpad jdk.hotspot.agent jdk.httpserver jdk.internal.le jdk.internal.vm.ci jdk.internal.vm.compiler jdk.internal.vm.compiler.management jdk.jartool jdk.javadoc jdk.jcmd jdk.management jdk.management.agent jdk.jconsole jdk.jdeps jdk.jdwp.agent jdk.jdi jdk.jfr jdk.jshell jdk.jsobject jdk.jstatd jdk.localedata jdk.management.jfr jdk.naming.dns jdk.naming.rmi jdk.net jdk.nio.mapmode jdk.random jdk.sctp jdk.security.auth jdk.security.jgss jdk.unsupported jdk.unsupported.desktop jdk.xml.dom"
 
 Environment Variables:
 PATH=C:\Program Files\Eclipse Adoptium\jdk-17.0.17.10-hotspot\bin;C:\Program Files\Eclipse Adoptium\jdk-25.0.1.8-hotspot\bin;C:\Program Files\Microsoft MPI\Bin\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files (x86)\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\Tools\Binn\;C:\Program Files\Microsoft SQL Server\150\DTS\Binn\;C:\Program Files (x86)\Microsoft SQL Server\160\Tools\Binn\;C:\Program Files\Microsoft SQL Server\160\Tools\Binn\;C:\Program Files\Microsoft SQL Server\160\DTS\Binn\;C:\Users\jlopez\AppData\Local\Android\Sdk\emulator;C:\Users\jlopez\AppData\Local\Android\Sdk\platform-tools;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\170\Tools\Binn\;C:\Program Files\Docker\Docker\resources\bin;C:\ProgramData\chocolatey\bin;C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.11\bin;C:\Users\jlopez\AppData\Local\Microsoft\WindowsApps;C:\Users\jlopez\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\jlopez\AppData\Local\Programs\Git\cmd;C:\Users\jlopez\AppData\Roaming\npm;C:\Users\jlopez\AppData\Local\GitHubDesktop\bin;C:\Users\jlopez\.dotnet\tools

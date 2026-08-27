@@ -17,4 +17,3 @@ public interface StockRepository {
 
   List<Stock> findAllByContext(StockContext context);
 }
-

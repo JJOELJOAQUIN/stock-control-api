@@ -4,4 +4,3 @@ public enum CashMovementItemKind {
   PRODUCT,
   PROCEDURE
 }
-

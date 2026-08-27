@@ -13,4 +13,3 @@ public record CreateProcedureCashRequest(
     String comment,
     UUID referenceId
 ) {}
-

@@ -10,4 +10,3 @@ public enum PaymentMethod {
     return this == DEBIT || this == CREDIT;
   }
 }
-

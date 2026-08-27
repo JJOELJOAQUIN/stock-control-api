@@ -1,0 +1,26 @@
+# Hook que corre ANTES de cada commit y bloquea si detecta un secreto.
+# Es la red que evita repetir el leak: si intentás commitear una key, una
+# connection string con password, un token, etc., gitleaks frena el commit.
+#
+# Instalación (una sola vez, en Windows con py):
+#   py -m pip install pre-commit
+#   py -m pre_commit install
+#
+# A partir de ahí corre solo en cada 'git commit'. Para escanear todo el
+# repo a mano cuando quieras:
+#   py -m pre_commit run --all-files
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Higiene básica: evita dejar archivos con problemas comunes.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: detect-private-key

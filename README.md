@@ -44,15 +44,15 @@ Principios aplicados:
 
 ## 🧰 Stack Tecnológico
 
-- Java 17  
-- Spring Boot 3.4  
-- Spring Data JPA  
-- SQL Server  
-- H2 (testing)  
-- Firebase Authentication  
-- Docker  
-- JaCoCo (coverage)  
-- GitHub Actions (CI/CD)  
+- Java 17
+- Spring Boot 3.4
+- Spring Data JPA
+- SQL Server
+- H2 (testing)
+- Firebase Authentication
+- Docker
+- JaCoCo (coverage)
+- GitHub Actions (CI/CD)
 
 ---
 
@@ -98,7 +98,7 @@ SECURITY_FIREBASE_ENABLED=true
 ```bash
 mvn clean spring-boot:run
 ```
-levantar docker local: 
+levantar docker local:
 
 docker compose up -d
 
@@ -111,7 +111,7 @@ http://localhost:8080/swagger-ui/index.html
 ---
 
 
-docker bases de prueba: 
+docker bases de prueba:
 
 
 docker exec -it stock_postgres psql -U stock_user -d stock_control
@@ -173,11 +173,11 @@ jobs:
 ## 📦 Modelo de Dominio
 
 ### Product
-Entidad raíz del inventario.  
+Entidad raíz del inventario.
 Define alcance (`LOCAL`, `CONSULTORIO`, `BOTH`) y stock mínimo.
 
 ### StockEntity
-Stock actual por producto y contexto.  
+Stock actual por producto y contexto.
 
 Restricción crítica:
 
@@ -191,7 +191,7 @@ Incluye control de concurrencia optimista.
 Historial auditable de movimientos (`INIT`, `IN`, `OUT`, `ADJUST`).
 
 ### CashMovement
-Registro financiero asociado a operaciones.  
+Registro financiero asociado a operaciones.
 Calcula automáticamente retención y monto neto.
 
 ### Expense
@@ -303,12 +303,12 @@ Métricas recomendadas:
 
 ## 🔄 Flujo de Venta
 
-1. Buscar producto  
-2. Validar alcance (`scope`)  
-3. Verificar stock disponible  
-4. Registrar movimiento OUT  
-5. Registrar movimiento de caja IN  
-6. Aplicar retención si corresponde  
+1. Buscar producto
+2. Validar alcance (`scope`)
+3. Verificar stock disponible
+4. Registrar movimiento OUT
+5. Registrar movimiento de caja IN
+6. Aplicar retención si corresponde
 
 Todo se ejecuta dentro de una única transacción.
 
@@ -337,13 +337,13 @@ SPRING_JPA_HIBERNATE_DDL_AUTO=validate
 
 ## 📈 Estado del Proyecto
 
-✔ Arquitectura limpia  
-✔ Inventario multi-contexto  
-✔ Caja integrada  
-✔ Movimientos auditables  
-✔ Seguridad basada en roles  
-✔ Dockerizable  
-✔ CI/CD Ready  
-✔ Cobertura con JaCoCo  
+✔ Arquitectura limpia
+✔ Inventario multi-contexto
+✔ Caja integrada
+✔ Movimientos auditables
+✔ Seguridad basada en roles
+✔ Dockerizable
+✔ CI/CD Ready
+✔ Cobertura con JaCoCo
 
 ---

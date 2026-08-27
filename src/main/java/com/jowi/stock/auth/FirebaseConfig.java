@@ -29,7 +29,20 @@ public class FirebaseConfig {
       throw new IllegalStateException("Firebase service account base64 is missing");
     }
 
-    byte[] decoded = Base64.getDecoder().decode(firebaseServiceAccountBase64);
+    // Sacamos TODO whitespace (espacios y saltos de línea): el caso típico de
+    // falla es pegar el base64 partido en líneas de 76 chars (sin -w0), que
+    // rompe el decoder con "Illegal base64 character". Limpiándolo, ese error
+    // deja de pasar. Si aún así no es base64 válido, damos un mensaje humano.
+    String cleaned = firebaseServiceAccountBase64.replaceAll("\\s", "");
+    byte[] decoded;
+    try {
+      decoded = Base64.getDecoder().decode(cleaned);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalStateException(
+          "FIREBASE_SERVICE_ACCOUNT_BASE64 no es base64 válido. ¿Pegaste el JSON "
+          + "crudo en vez del base64, o el valor quedó con caracteres raros? "
+          + "Generalo con: base64 -w0 service-account.json", e);
+    }
     String json = new String(decoded, StandardCharsets.UTF_8);
 
     FirebaseOptions options = FirebaseOptions.builder()

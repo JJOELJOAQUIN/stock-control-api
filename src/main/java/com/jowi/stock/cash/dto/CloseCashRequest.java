@@ -12,4 +12,3 @@ public record CloseCashRequest(
     LocalDate date,
     String note) {
 }
-

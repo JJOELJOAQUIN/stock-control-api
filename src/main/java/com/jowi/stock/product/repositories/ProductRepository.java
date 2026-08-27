@@ -11,6 +11,6 @@ public interface ProductRepository
     long count();
 
     long countByActiveTrue();
-    
+
     Optional <Product> findByBarcode(String barcode);
 }

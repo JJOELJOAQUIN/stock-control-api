@@ -10,4 +10,3 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
   List<Payment> findByTreatmentIdOrderByInstallmentNumberAsc(UUID treatmentId);
    Optional<Payment> findByCashMovementId(UUID cashMovementId);
 }
-
