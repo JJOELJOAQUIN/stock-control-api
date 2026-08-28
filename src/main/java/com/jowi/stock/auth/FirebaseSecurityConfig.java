@@ -114,12 +114,16 @@ public class FirebaseSecurityConfig {
                     // Lectura de productos (catálogo, with-stock, scan): ADMIN + COSMETOLOGA.
                     auth.requestMatchers(HttpMethod.GET, "/api/products/**")
                             .hasAnyRole("ADMIN", "COSMETOLOGA");
-                    // Alta / edición / baja de productos: solo ADMIN.
-                    auth.requestMatchers("/api/products/**").hasRole("ADMIN");
+                    // Alta de productos: ADMIN + COSMETOLOGA (la Dra y la cosmetóloga
+                    // pueden dar de alta insumos y asociarlos a tratamientos).
+                    auth.requestMatchers(HttpMethod.POST, "/api/products")
+                            .hasAnyRole("ADMIN", "COSMETOLOGA");
+                    // Edición / baja de productos: solo ADMIN.
+                    auth.requestMatchers("/api/products/**").hasRole("ADMIN", "COSMETOLOGA");
 
                     // Compra de productos: fuera del alcance de COSMETOLOGA (igual que en el front).
                     auth.requestMatchers(HttpMethod.POST, "/api/business/purchase")
-                            .hasAnyRole("ADMIN", "USER");
+                            .hasAnyRole("ADMIN", "USER", "COSMETOLOGA");
                     // Resto de operaciones de negocio (venta por código de barras, etc.).
                     auth.requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA");
 

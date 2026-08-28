@@ -10,6 +10,10 @@ import com.jowi.stock.product.dto.CreateProductRequest;
 import com.jowi.stock.product.dto.PatchProductRequest;
 import com.jowi.stock.product.dto.ProductWithStockResponse;
 import com.jowi.stock.product.dto.UpdateProductRequest;
+import com.jowi.stock.procedure.entities.ProcedureConsumption;
+import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
+import com.jowi.stock.procedure.repositories.ProcedureConsumptionRepository;
+import com.jowi.stock.product.dto.CreateProductRequest.ProductRecipeLineRequest;
 import com.jowi.stock.product.entities.Product;
 import com.jowi.stock.product.enums.ProductScope;
 import com.jowi.stock.product.repositories.ProductRepository;
@@ -23,12 +27,18 @@ public class ProductServiceImpl implements ProductService {
 
   private final ProductRepository productRepository;
   private final StockRepository stockRepository;
+  private final ProcedureConsumptionRepository procedureConsumptionRepository;
+  private final ProcedureCatalogRepository procedureCatalogRepository;
 
   public ProductServiceImpl(
       ProductRepository productRepository,
-      StockRepository stockRepository) {
+      StockRepository stockRepository,
+      ProcedureConsumptionRepository procedureConsumptionRepository,
+      ProcedureCatalogRepository procedureCatalogRepository) {
     this.productRepository = productRepository;
     this.stockRepository = stockRepository;
+    this.procedureConsumptionRepository = procedureConsumptionRepository;
+    this.procedureCatalogRepository = procedureCatalogRepository;
   }
 
   @Override
@@ -54,10 +64,60 @@ public class ProductServiceImpl implements ProductService {
     product.setDefaultMarkupPercentage(request.defaultMarkupPercentage());
     product.setShelfLifeMonths(request.shelfLifeMonths());
     product.setRestockPriority(request.restockPriority());
+    product.setConsumptionUnit(request.consumptionUnit());
+    product.setUnitsPerPackage(request.unitsPerPackage());
 
     validateProduct(product);
 
-    return productRepository.save(product);
+    Product saved = productRepository.save(product);
+
+    // Asociación opcional a procedimientos (receta/BOM). Misma transacción:
+    // si una línea falla, no queda ni el producto a medias ni recetas sueltas.
+    persistRecipes(saved, request.recipes());
+
+    return saved;
+  }
+
+  /**
+   * Crea los renglones de receta (procedure_consumption) que asocian este
+   * producto a uno o varios procedimientos. Valida que cada procedureCode
+   * exista en el catálogo y respeta el unique (procedure_code, product_id):
+   * si ya hay una línea para ese par, actualiza la cantidad en vez de duplicar.
+   */
+  private void persistRecipes(Product product, List<ProductRecipeLineRequest> recipes) {
+    if (recipes == null || recipes.isEmpty()) {
+      return;
+    }
+
+    for (ProductRecipeLineRequest line : recipes) {
+      if (line == null) {
+        continue;
+      }
+      String code = line.procedureCode() == null ? null : line.procedureCode().trim();
+      if (code == null || code.isBlank()) {
+        throw new IllegalArgumentException("procedureCode requerido en la receta");
+      }
+      if (line.quantity() == null || line.quantity() < 1) {
+        throw new IllegalArgumentException(
+            "La cantidad de la receta para " + code + " debe ser >= 1");
+      }
+      if (!procedureCatalogRepository.existsByCodeIgnoreCase(code)) {
+        throw new IllegalArgumentException(
+            "El procedimiento " + code + " no existe en el catálogo");
+      }
+
+      // Upsert por (procedureCode, productId) para respetar el unique.
+      ProcedureConsumption row = procedureConsumptionRepository
+          .findByProcedureCode(code).stream()
+          .filter(c -> c.getProductId().equals(product.getId()))
+          .findFirst()
+          .orElseGet(ProcedureConsumption::new);
+
+      row.setProcedureCode(code);
+      row.setProductId(product.getId());
+      row.setQuantity(line.quantity());
+      procedureConsumptionRepository.save(row);
+    }
   }
 
   @Override
