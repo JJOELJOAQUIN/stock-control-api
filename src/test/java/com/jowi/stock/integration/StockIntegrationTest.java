@@ -116,6 +116,7 @@ class StockIntegrationTest {
                 null,
                 null,
                 null,
+                null,
                 null);
         Product product = productService.create(req);
         UUID id = product.getId();
