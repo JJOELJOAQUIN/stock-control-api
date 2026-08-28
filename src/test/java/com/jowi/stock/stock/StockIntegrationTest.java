@@ -52,6 +52,9 @@ class StockIntegrationTest {
                 new BigDecimal("3000.00"),
                 new BigDecimal("50.00"),
                 null,
+                null,
+                null,
+                null,
                 null);
 
         String productResponse = mockMvc.perform(post("/api/products")

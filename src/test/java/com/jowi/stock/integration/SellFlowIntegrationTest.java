@@ -65,6 +65,9 @@ class SellFlowIntegrationTest {
                 new BigDecimal("3000.00"),
                 new BigDecimal("50.00"),
                 null,
+                null,
+                null,
+                null,
                 null);
 
         Product product = productService.create(req);

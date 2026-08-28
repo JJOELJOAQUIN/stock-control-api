@@ -57,6 +57,9 @@ class StockIntegrationTest {
                 new BigDecimal("3000.00"),
                 new BigDecimal("50.00"),
                 null,
+                null,
+                null,
+                null,
                 null);
 
         Product product = productService.create(req);
@@ -111,6 +114,8 @@ class StockIntegrationTest {
                 new BigDecimal("3000.00"),
                 new BigDecimal("50.00"),
                 null,
+                null,
+                null,
                 null);
         Product product = productService.create(req);
         UUID id = product.getId();
@@ -134,6 +139,9 @@ class StockIntegrationTest {
                 null,
                 new BigDecimal("2000.00"),
                 new BigDecimal("3000.00"),new BigDecimal("50.00"),
+                null,
+                null,
+                null,
                 null,
                 null);
 
