@@ -25,3 +25,7 @@ security:
 
 firebase:
     service-account-base64: ${FIREBASE_SERVICE_ACCOUNT_BASE64:}
+
+logging:
+  level:
+    org.springframework.security: DEBUG
