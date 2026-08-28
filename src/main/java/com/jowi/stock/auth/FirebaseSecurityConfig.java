@@ -119,7 +119,7 @@ public class FirebaseSecurityConfig {
                     auth.requestMatchers(HttpMethod.POST, "/api/products")
                             .hasAnyRole("ADMIN", "COSMETOLOGA");
                     // Edición / baja de productos: solo ADMIN.
-                    auth.requestMatchers("/api/products/**").hasAnyRole("ADMIN", "COSMETOLOGA")
+                    auth.requestMatchers("/api/products/**").hasRole("ADMIN")
 
                     // Compra de productos: fuera del alcance de COSMETOLOGA (igual que en el front).
                     auth.requestMatchers(HttpMethod.POST, "/api/business/purchase")
