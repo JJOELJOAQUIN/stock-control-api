@@ -118,7 +118,7 @@ public class FirebaseSecurityConfig {
 
                     // Compra de productos: fuera del alcance de COSMETOLOGA (igual que en el front).
                     auth.requestMatchers(HttpMethod.POST, "/api/business/purchase")
-                            .hasAnyRole("ADMIN", "USER");
+                            .hasAnyRole("ADMIN", "USER", "COSMETOLOGA");
                     // Resto de operaciones de negocio (venta por código de barras, etc.).
                     auth.requestMatchers("/api/business/**").hasAnyRole("ADMIN", "USER", "COSMETOLOGA");
 
