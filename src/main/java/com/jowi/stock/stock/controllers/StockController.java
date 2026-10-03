@@ -1,5 +1,6 @@
 package com.jowi.stock.stock.controllers;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.jowi.stock.stock.dto.LowStockResponse;
+import com.jowi.stock.stock.dto.ReconcileStockRequest;
+import com.jowi.stock.stock.dto.ReconcileStockResponse;
 import com.jowi.stock.stock.dto.StockResponse;
 import com.jowi.stock.stock.entities.Stock;
 import com.jowi.stock.stock.enums.StockContext;
@@ -86,5 +89,18 @@ public class StockController {
 
     stockService.decrease(productId, context, qty);
     return ResponseEntity.ok().build();
+  }
+
+  // =========================
+  // RECONCILE (conteo físico)
+  // =========================
+  @PostMapping("/{productId}/reconcile")
+  public ResponseEntity<ReconcileStockResponse> reconcile(
+      @PathVariable UUID productId,
+      @RequestParam StockContext context,
+      @Valid @RequestBody ReconcileStockRequest request) {
+
+    return ResponseEntity.ok(stockService.reconcile(
+        productId, context, request.countedQuantity(), request.comment()));
   }
 }

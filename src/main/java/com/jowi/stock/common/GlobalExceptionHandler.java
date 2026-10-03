@@ -12,6 +12,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import com.jowi.stock.stock.dto.InsufficientStockErrorResponse;
+import com.jowi.stock.stock.exceptions.InsufficientStockException;
+
+import java.time.Instant;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -56,6 +61,30 @@ public class GlobalExceptionHandler {
     // =========================
     // 409 - CONFLICT
     // =========================
+
+    // Stock insuficiente: 409 con los datos del producto para que el front
+    // ofrezca reconciliar el stock y reintentar.
+    @ExceptionHandler(InsufficientStockException.class)
+    public ResponseEntity<InsufficientStockErrorResponse> handleInsufficientStock(
+            InsufficientStockException ex,
+            HttpServletRequest request) {
+
+        HttpStatus status = HttpStatus.CONFLICT;
+        return ResponseEntity.status(status).body(new InsufficientStockErrorResponse(
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI(),
+                InsufficientStockErrorResponse.CODE,
+                ex.getProductId(),
+                ex.getProductName(),
+                ex.getContext(),
+                ex.getAvailable(),
+                ex.getRequested(),
+                ex.getUnit(),
+                ex.getUnitsPerPackage()));
+    }
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleConflict(

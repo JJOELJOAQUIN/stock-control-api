@@ -9,8 +9,10 @@ import com.jowi.stock.movement.services.StockMovementService;
 import com.jowi.stock.product.entities.Product;
 import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.dto.LowStockResponse;
+import com.jowi.stock.stock.dto.ReconcileStockResponse;
 import com.jowi.stock.stock.entities.Stock;
 import com.jowi.stock.stock.enums.StockContext;
+import com.jowi.stock.stock.exceptions.InsufficientStockException;
 import com.jowi.stock.stock.repositories.StockRepository;
 
 import jakarta.persistence.OptimisticLockException;
@@ -177,12 +179,16 @@ public class StockService {
     Product product = productService.getById(productId);
     validateScope(product, context);
 
-    Stock stock = getStock(productId, context);
+    // Sin fila de stock = nunca se cargó: para quien registra un tratamiento
+    // es lo mismo que "no hay", y así puede reconciliarlo desde el diálogo.
+    int available = stockRepository.findByProductIdAndContext(productId, context)
+        .map(Stock::getCurrent)
+        .orElse(0);
 
-    int newValue = stock.getCurrent() - qty;
+    int newValue = available - qty;
 
     if (newValue < 0) {
-      throw new IllegalStateException("Insufficient stock");
+      throw insufficient(product, context, available, qty);
     }
 
     try {
@@ -204,6 +210,77 @@ public class StockService {
         reason,
         comment,
         allocations);
+  }
+
+  /**
+   * Reconciliación: deja el stock EXACTAMENTE en lo que se contó físicamente
+   * (en la unidad de consumo del producto: ml, ampollas, etc.).
+   *
+   * Pensado para cuando el sistema dice que no hay stock pero en la heladera
+   * sí hay (compras no cargadas, consumos mal descontados). La diferencia se
+   * registra como movimiento IN/OUT con motivo AJUSTE_ERROR, así queda la
+   * trazabilidad de quién corrigió y cuánto. Si baja, también descuenta los
+   * lotes (FEFO) para que los vencimientos sigan siendo reales.
+   */
+  public ReconcileStockResponse reconcile(
+      UUID productId,
+      StockContext context,
+      int counted,
+      String comment) {
+
+    if (counted < 0) {
+      throw new IllegalArgumentException("El stock contado no puede ser negativo");
+    }
+
+    Product product = productService.getById(productId);
+    validateScope(product, context);
+
+    if (!stockRepository.existsByProductIdAndContext(productId, context)) {
+      stockRepository.save(productId, context, 0);
+    }
+
+    int previous = getStock(productId, context).getCurrent();
+    int diff = counted - previous;
+
+    if (diff == 0) {
+      return new ReconcileStockResponse(productId, previous, counted, 0);
+    }
+
+    String note = "Reconciliación de stock: había " + previous + ", se contaron " + counted
+        + (comment == null || comment.isBlank() ? "" : " · " + comment.trim());
+
+    try {
+      stockRepository.save(productId, context, counted);
+    } catch (OptimisticLockException e) {
+      throw new IllegalStateException("Concurrent stock modification detected");
+    }
+
+    if (diff > 0) {
+      movementService.register(
+          productId, context, StockMovementType.IN, diff,
+          StockMovementReason.AJUSTE_ERROR, note);
+    } else {
+      List<BatchAllocation> allocations = batchService.consume(productId, context, -diff);
+      movementService.register(
+          productId, context, StockMovementType.OUT, -diff,
+          StockMovementReason.AJUSTE_ERROR, note, allocations);
+    }
+
+    return new ReconcileStockResponse(productId, previous, counted, diff);
+  }
+
+  private InsufficientStockException insufficient(
+      Product product, StockContext context, int available, int requested) {
+
+    String unit = product.getConsumptionUnit() == null
+        ? "UNIDAD"
+        : product.getConsumptionUnit().name();
+    int perPackage = product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1
+        ? 1
+        : product.getUnitsPerPackage();
+
+    return new InsufficientStockException(
+        product.getId(), product.getName(), context, available, requested, unit, perPackage);
   }
 
   public boolean exists(UUID productId, StockContext context) {
