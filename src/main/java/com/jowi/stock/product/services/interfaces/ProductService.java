@@ -30,5 +30,12 @@ public interface ProductService {
   void assignBarcode(UUID productId, String barcode);
  List<ProductWithStockResponse> getAllWithStock(StockContext context);
 
+ /**
+  * Igual que {@link #getAllWithStock(StockContext)}, pero con
+  * includeInactive = true también devuelve los productos dados de baja (la
+  * pantalla de Stock los necesita para poder reactivarlos).
+  */
+ List<ProductWithStockResponse> getAllWithStock(StockContext context, boolean includeInactive);
+
 
 }

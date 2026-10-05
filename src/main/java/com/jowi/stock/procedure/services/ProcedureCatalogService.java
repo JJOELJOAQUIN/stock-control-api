@@ -79,6 +79,16 @@ public class ProcedureCatalogService {
     }
 
     ProcedureCatalog c = new ProcedureCatalog();
+    // La receta se guarda por código: si el código cambia, la receta se
+    // muda con él. Antes quedaba huérfana y el tratamiento dejaba de
+    // descontar stock sin avisar (pasó con MESOTERAPIA_CAPILAR).
+    String previousCode = c.getCode();
+    if (previousCode != null && !previousCode.equals(code)) {
+      List<ProcedureConsumption> recipe = consumptionRepository.findByProcedureCode(previousCode);
+      recipe.forEach(line -> line.setProcedureCode(code));
+      consumptionRepository.saveAll(recipe);
+    }
+
     c.setCode(code);
     apply(c, req);
     ProcedureCatalog saved = repository.save(c);
@@ -96,6 +106,16 @@ public class ProcedureCatalogService {
       throw new IllegalArgumentException(
           "Ya existe otro tratamiento con el código " + code);
     }
+    // La receta se guarda por código: si el código cambia, la receta se
+    // muda con él. Antes quedaba huérfana y el tratamiento dejaba de
+    // descontar stock sin avisar (pasó con MESOTERAPIA_CAPILAR).
+    String previousCode = c.getCode();
+    if (previousCode != null && !previousCode.equals(code)) {
+      List<ProcedureConsumption> recipe = consumptionRepository.findByProcedureCode(previousCode);
+      recipe.forEach(line -> line.setProcedureCode(code));
+      consumptionRepository.saveAll(recipe);
+    }
+
     c.setCode(code);
     apply(c, req);
     ProcedureCatalog saved = repository.save(c);
