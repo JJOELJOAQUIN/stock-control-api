@@ -331,7 +331,8 @@ public class ProductServiceImpl implements ProductService {
               product.getRestockPriority(),
               product.getConsumptionUnit() == null
                   ? null
-                  : product.getConsumptionUnit().name());
+                  : product.getConsumptionUnit().name(),
+              product.getUnitsPerPackage());
         })
         .toList();
   }

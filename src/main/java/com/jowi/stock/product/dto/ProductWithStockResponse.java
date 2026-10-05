@@ -19,5 +19,8 @@ public record ProductWithStockResponse(
         BigDecimal defaultMarkupPercentage,
         Integer shelfLifeMonths,
         Integer restockPriority,
-        String consumptionUnit) {
+        String consumptionUnit,
+        // Unidades de consumo por envase (ej. NCTF: 10 dosis por caja). La
+        // reconciliación lo usa para cargar "envases cerrados + sueltos".
+        Integer unitsPerPackage) {
 }
