@@ -287,8 +287,14 @@ public class ProductServiceImpl implements ProductService {
 
   @Override
   public List<ProductWithStockResponse> getAllWithStock(StockContext context) {
+    return getAllWithStock(context, false);
+  }
+
+  @Override
+  public List<ProductWithStockResponse> getAllWithStock(
+      StockContext context, boolean includeInactive) {
     return productRepository.findAll().stream()
-        .filter(Product::getActive)
+        .filter(product -> includeInactive || Boolean.TRUE.equals(product.getActive()))
         .filter(product -> product.getScope() == ProductScope.BOTH ||
             product.getScope().name().equals(context.name()))
         .map(product -> {

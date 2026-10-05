@@ -111,8 +111,9 @@ public class ProductController {
 
   @GetMapping("/with-stock")
   public ResponseEntity<List<ProductWithStockResponse>> getAllWithStock(
-      @RequestParam StockContext context) {
-    return ResponseEntity.ok(productService.getAllWithStock(context));
+      @RequestParam StockContext context,
+      @RequestParam(defaultValue = "false") boolean includeInactive) {
+    return ResponseEntity.ok(productService.getAllWithStock(context, includeInactive));
   }
 
   @GetMapping("/scan")
