@@ -1,5 +1,7 @@
 package com.jowi.stock.product.dto;
 
+import com.jowi.stock.product.enums.ConsumptionUnit;
+
 import java.math.BigDecimal;
 
 import com.jowi.stock.product.enums.ProductBrand;
@@ -21,5 +23,9 @@ public record UpdateProductRequest(
         BigDecimal salePrice,
         BigDecimal defaultMarkupPercentage,
         @Min(1) Integer shelfLifeMonths,
-        @Min(0) Integer restockPriority) {
+        @Min(0) Integer restockPriority,
+        // Opcionales (null = no cambia). unitsPerPackage en unidades
+        // guardadas (ML en décimas). Cambiar la unidad re-escala el stock.
+        ConsumptionUnit consumptionUnit,
+        @Min(1) Integer unitsPerPackage) {
 }

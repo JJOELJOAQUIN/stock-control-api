@@ -22,5 +22,8 @@ public record ProductWithStockResponse(
         String consumptionUnit,
         // Unidades de consumo por envase (ej. NCTF: 10 dosis por caja). La
         // reconciliación lo usa para cargar "envases cerrados + sueltos".
-        Integer unitsPerPackage) {
+        Integer unitsPerPackage,
+        // Cantidades (stock, mínimo, unitsPerPackage) van en unidades
+        // guardadas: dividir por unitScale para mostrar (ML = 10, décimas).
+        Integer unitScale) {
 }

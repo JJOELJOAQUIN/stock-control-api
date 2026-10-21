@@ -1,5 +1,6 @@
 package com.jowi.stock.stock.exceptions;
 
+import com.jowi.stock.product.enums.ConsumptionUnit;
 import com.jowi.stock.stock.enums.StockContext;
 
 import java.util.UUID;
@@ -21,24 +22,31 @@ public class InsufficientStockException extends IllegalStateException {
   private final int requested;
   private final String unit;
   private final int unitsPerPackage;
+  private final int unitScale;
 
+  /**
+   * available, requested y unitsPerPackage van en unidades GUARDADAS (ML en
+   * décimas); el mensaje se arma en unidades visibles ("hay 0,5 ml").
+   */
   public InsufficientStockException(
       UUID productId,
       String productName,
       StockContext context,
       int available,
       int requested,
-      String unit,
+      ConsumptionUnit unit,
       int unitsPerPackage) {
-    super("Stock insuficiente de " + productName + ": hay " + available
-        + " " + unit + " y se necesitan " + requested + ".");
+    super("Stock insuficiente de " + productName + ": hay "
+        + ConsumptionUnit.format(available, unit) + " y se necesitan "
+        + ConsumptionUnit.format(requested, unit) + ".");
     this.productId = productId;
     this.productName = productName;
     this.context = context;
     this.available = available;
     this.requested = requested;
-    this.unit = unit;
+    this.unit = (unit == null ? ConsumptionUnit.UNIDAD : unit).name();
     this.unitsPerPackage = unitsPerPackage;
+    this.unitScale = ConsumptionUnit.scaleOf(unit);
   }
 
   public UUID getProductId() {
@@ -67,5 +75,9 @@ public class InsufficientStockException extends IllegalStateException {
 
   public int getUnitsPerPackage() {
     return unitsPerPackage;
+  }
+
+  public int getUnitScale() {
+    return unitScale;
   }
 }

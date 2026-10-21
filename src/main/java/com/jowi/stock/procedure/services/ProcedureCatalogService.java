@@ -13,6 +13,7 @@ import com.jowi.stock.procedure.enums.ProcedureSplitRule;
 import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
 import com.jowi.stock.procedure.repositories.ProcedureConsumptionRepository;
 import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ConsumptionUnit;
 import com.jowi.stock.product.repositories.ProductRepository;
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;
@@ -196,7 +197,8 @@ public class ProcedureCatalogService {
               ? p.getConsumptionUnit().name()
               : null;
           return new RecipeLineResponse(
-              l.getProductId().toString(), name, unit, l.getQuantity());
+              l.getProductId().toString(), name, unit, l.getQuantity(),
+              ConsumptionUnit.scaleOf(p != null ? p.getConsumptionUnit() : null));
         })
         .toList();
   }

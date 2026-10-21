@@ -1,5 +1,7 @@
 package com.jowi.stock.product.services;
 
+import com.jowi.stock.product.enums.ConsumptionUnit;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -29,12 +31,15 @@ public class ProductServiceImpl implements ProductService {
   private final StockRepository stockRepository;
   private final ProcedureConsumptionRepository procedureConsumptionRepository;
   private final ProcedureCatalogRepository procedureCatalogRepository;
+  private final UnitRescaleService unitRescaleService;
 
   public ProductServiceImpl(
       ProductRepository productRepository,
       StockRepository stockRepository,
       ProcedureConsumptionRepository procedureConsumptionRepository,
-      ProcedureCatalogRepository procedureCatalogRepository) {
+      ProcedureCatalogRepository procedureCatalogRepository,
+      UnitRescaleService unitRescaleService) {
+    this.unitRescaleService = unitRescaleService;
     this.productRepository = productRepository;
     this.stockRepository = stockRepository;
     this.procedureConsumptionRepository = procedureConsumptionRepository;
@@ -160,6 +165,23 @@ public class ProductServiceImpl implements ProductService {
     // viejos (sin el campo) la reseteen a 0 en cada edición.
     if (r.restockPriority() != null) {
       p.setRestockPriority(r.restockPriority());
+    }
+
+    // Cambio de unidad: si cambia la escala (ej. AMPOLLA -> ML), todo lo
+    // guardado del producto se re-escala para que la cantidad no cambie
+    // (3 ampollas -> 3 ml). Si además cambia el significado, se corrige con
+    // Reconciliación de stock.
+    if (r.consumptionUnit() != null && r.consumptionUnit() != p.getConsumptionUnit()) {
+      int from = ConsumptionUnit.scaleOf(p.getConsumptionUnit());
+      int to = r.consumptionUnit().scale();
+      unitRescaleService.rescale(p.getId(), from, to, false);
+      if (r.unitsPerPackage() == null && p.getUnitsPerPackage() != null && from != to) {
+        p.setUnitsPerPackage(Math.max(1, Math.round(p.getUnitsPerPackage() * (float) to / from)));
+      }
+      p.setConsumptionUnit(r.consumptionUnit());
+    }
+    if (r.unitsPerPackage() != null) {
+      p.setUnitsPerPackage(r.unitsPerPackage());
     }
 
     validateProduct(p);
@@ -332,7 +354,8 @@ public class ProductServiceImpl implements ProductService {
               product.getConsumptionUnit() == null
                   ? null
                   : product.getConsumptionUnit().name(),
-              product.getUnitsPerPackage());
+              product.getUnitsPerPackage(),
+              ConsumptionUnit.scaleOf(product.getConsumptionUnit()));
         })
         .toList();
   }

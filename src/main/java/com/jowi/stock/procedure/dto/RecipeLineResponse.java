@@ -9,5 +9,7 @@ public record RecipeLineResponse(
     String productId,
     String productName,
     String unit,
-    int quantity) {
+    int quantity,
+    // quantity va en unidades guardadas: ML en décimas (1,5 ml -> 15).
+    int unitScale) {
 }
