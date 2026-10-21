@@ -37,6 +37,18 @@ public class CurrentUserService {
         .anyMatch(a -> "ROLE_COSMETOLOGA".equals(a.getAuthority()));
   }
 
+  /** True si el usuario autenticado tiene rol ADMIN (la médica / dueña). */
+  public boolean isAdmin() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+    if (auth == null) {
+      return false;
+    }
+
+    return auth.getAuthorities().stream()
+        .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+  }
+
   /**
    * Email del usuario autenticado, o el principal crudo si no hay AppUser
    * (caso del filtro dev, donde el principal ya es un email). Nunca null:

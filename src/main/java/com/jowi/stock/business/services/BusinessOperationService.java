@@ -1,5 +1,7 @@
 package com.jowi.stock.business.services;
 
+import com.jowi.stock.auth.CurrentUserService;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.EnumSet;
@@ -165,6 +167,7 @@ public class BusinessOperationService {
   private final PurchaseItemRepository purchaseItemRepository;
   private final ProcedureConsumptionService consumptionService;
   private final ProcedureCatalogRepository procedureCatalogRepository;
+  private final CurrentUserService currentUserService;
 
   public BusinessOperationService(
       StockService stockService,
@@ -174,7 +177,9 @@ public class BusinessOperationService {
       StockMovementService stockMovementService,
       PurchaseItemRepository purchaseItemRepository,
       ProcedureConsumptionService consumptionService,
-      ProcedureCatalogRepository procedureCatalogRepository) {
+      ProcedureCatalogRepository procedureCatalogRepository,
+      CurrentUserService currentUserService) {
+    this.currentUserService = currentUserService;
     this.stockService = stockService;
     this.cashService = cashService;
     this.productService = productService;
@@ -394,6 +399,36 @@ public class BusinessOperationService {
    * subtotal. No crea movimiento de caja: ese se hace una sola vez por la
    * orden completa.
    */
+  /**
+   * Insumos a descontar por un procedimiento de una venta combinada.
+   *
+   * Por defecto, la receta. Si viene un consumo explícito y quien registra
+   * es ADMIN (la médica), se usa ese: hay tratamientos cuyo gasto depende
+   * de la sesión (cicatrices según el tamaño) o con insumos reemplazables
+   * (Redenx + DMAE u otro). Para el resto de los roles la receta manda,
+   * igual que el reparto: lo decide el backend, no el cliente.
+   */
+  private List<ProcedureConsumptionService.ResolvedLine> consumptionFor(
+      CombinedSaleItemRequest item, String description) {
+
+    if (item.consumptions() == null || !currentUserService.isAdmin()) {
+      return consumptionService.resolve(item.procedureCode());
+    }
+
+    List<ProcedureConsumptionService.ResolvedLine> lines = new ArrayList<>();
+    for (CombinedSaleItemRequest.ConsumptionLine c : item.consumptions()) {
+      if (c.productId() == null) {
+        throw new IllegalArgumentException("Falta el producto en un insumo de " + description);
+      }
+      if (c.quantity() <= 0) {
+        throw new IllegalArgumentException("La cantidad de cada insumo debe ser mayor a cero ("
+            + description + ")");
+      }
+      lines.add(new ProcedureConsumptionService.ResolvedLine(c.productId(), c.quantity()));
+    }
+    return lines;
+  }
+
   /** Cantidad guardada -> unidades visibles (décimas de ml -> ml). */
   private static BigDecimal visibleQuantity(Product product, int stored) {
     int scale = ConsumptionUnit.scaleOf(product.getConsumptionUnit());
@@ -597,7 +632,7 @@ public class BusinessOperationService {
         // receta del BOM descuenta stock igual que en el flujo directo. Antes
         // una mesoterapia cargada por multi-ítem no descontaba nada.
         for (ProcedureConsumptionService.ResolvedLine cl
-            : consumptionService.resolve(item.procedureCode())) {
+            : consumptionFor(item, description)) {
           StockMovement sm = stockService.decrease(
               cl.productId(),
               stockContext,
