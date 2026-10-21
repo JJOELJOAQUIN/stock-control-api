@@ -24,7 +24,10 @@ public record InsufficientStockErrorResponse(
     int available,
     int requested,
     String unit,
-    int unitsPerPackage) {
+    int unitsPerPackage,
+    // available/requested/unitsPerPackage van en unidades guardadas; dividir
+    // por unitScale para mostrar (ML: 10 -> décimas de ml).
+    int unitScale) {
 
   public static final String CODE = "INSUFFICIENT_STOCK";
 }

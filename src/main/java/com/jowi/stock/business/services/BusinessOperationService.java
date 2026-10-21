@@ -23,6 +23,8 @@ import com.jowi.stock.cash.services.CashMovementService;
 import com.jowi.stock.movement.entities.StockMovement;
 import com.jowi.stock.movement.services.StockMovementService;
 import com.jowi.stock.movement.enums.StockMovementReason;
+import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ConsumptionUnit;
 import com.jowi.stock.product.services.interfaces.ProductService;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.services.StockService;
@@ -392,6 +394,13 @@ public class BusinessOperationService {
    * subtotal. No crea movimiento de caja: ese se hace una sola vez por la
    * orden completa.
    */
+  /** Cantidad guardada -> unidades visibles (décimas de ml -> ml). */
+  private static BigDecimal visibleQuantity(Product product, int stored) {
+    int scale = ConsumptionUnit.scaleOf(product.getConsumptionUnit());
+    return BigDecimal.valueOf(stored)
+        .divide(BigDecimal.valueOf(scale), 2, RoundingMode.HALF_UP);
+  }
+
   private BigDecimal processPurchaseItem(
       PurchaseItemRequest item, StockContext stockContext) {
 
@@ -401,9 +410,9 @@ public class BusinessOperationService {
     var product = productService.getById(productId);
 
     // La compra se carga en ENVASES; el stock y el lote entran en la unidad
-    // consumible del producto. Caja de NCTF (unitsPerPackage = 15): comprar 1
-    // ingresa 15 ml, y una sesión descuenta 1 o 2. Para el retail el factor
-    // es 1 y nada cambia.
+    // consumible del producto, ya escalada (ver ConsumptionUnit). Caja de
+    // NCTF (15 ml -> unitsPerPackage = 150 décimas): comprar 1 ingresa 15 ml.
+    // Para el retail el factor es 1 y nada cambia.
     int perPackage = product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1
         ? 1
         : product.getUnitsPerPackage();
@@ -436,10 +445,13 @@ public class BusinessOperationService {
 
     if (Boolean.TRUE.equals(item.updateCostPrice())) {
       // unitCost es el costo del ENVASE; costPrice se guarda por unidad
-      // consumible para que valor de stock (cantidad × costo) y el costo por
-      // sesión cierren. Caja NCTF $562.400 / 15 -> $37.493,33 el ml.
+      // VISIBLE (por ml, por ampolla) para que valor de stock y costo por
+      // sesión cierren. Caja NCTF $581.400 / 15 ml -> $38.760 el ml
+      // (perPackage = 150 décimas, escala 10).
+      int scale = ConsumptionUnit.scaleOf(product.getConsumptionUnit());
       product.setCostPrice(perPackage > 1
-          ? unitCost.divide(BigDecimal.valueOf(perPackage), 2, RoundingMode.HALF_UP)
+          ? unitCost.multiply(BigDecimal.valueOf(scale))
+              .divide(BigDecimal.valueOf(perPackage), 2, RoundingMode.HALF_UP)
           : unitCost);
     }
 
@@ -471,7 +483,7 @@ public class BusinessOperationService {
 
     if (product.getCostPrice() != null) {
       BigDecimal expected = product.getCostPrice()
-          .multiply(BigDecimal.valueOf(quantity));
+          .multiply(visibleQuantity(product, quantity));
 
       if (amount.compareTo(expected) < 0) {
         throw new IllegalStateException("Amount lower than cost price");
@@ -539,7 +551,7 @@ public class BusinessOperationService {
         // Misma protección que sellByBarcode: no vender por debajo del costo.
         if (product.getCostPrice() != null) {
           BigDecimal minExpected = product.getCostPrice()
-              .multiply(BigDecimal.valueOf(item.quantity()));
+              .multiply(visibleQuantity(product, item.quantity()));
           if (item.subtotal().compareTo(minExpected) < 0) {
             throw new IllegalStateException(
                 "Subtotal menor al costo del producto: " + product.getName());

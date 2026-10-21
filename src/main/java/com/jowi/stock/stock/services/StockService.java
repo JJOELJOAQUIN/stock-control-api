@@ -272,16 +272,15 @@ public class StockService {
   private InsufficientStockException insufficient(
       Product product, StockContext context, int available, int requested) {
 
-    String unit = product.getConsumptionUnit() == null
-        ? "UNIDAD"
-        : product.getConsumptionUnit().name();
     int perPackage = product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1
         ? 1
         : product.getUnitsPerPackage();
 
     return new InsufficientStockException(
-        product.getId(), product.getName(), context, available, requested, unit, perPackage);
+        product.getId(), product.getName(), context, available, requested,
+        product.getConsumptionUnit(), perPackage);
   }
+
 
   public boolean exists(UUID productId, StockContext context) {
     return stockRepository.existsByProductIdAndContext(productId, context);

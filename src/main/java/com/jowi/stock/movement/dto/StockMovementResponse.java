@@ -1,5 +1,7 @@
 package com.jowi.stock.movement.dto;
 
+import com.jowi.stock.product.enums.ConsumptionUnit;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,7 +16,10 @@ public record StockMovementResponse(
     StockMovementReason reason,
     int quantity,
     String comment,
-    Instant createdAt
+    Instant createdAt,
+    // quantity va en unidades guardadas: dividir por unitScale (ML = 10).
+    String unit,
+    int unitScale
 ) {
 
   public static StockMovementResponse from(StockMovement movement) {
@@ -25,7 +30,11 @@ public record StockMovementResponse(
         movement.getReasonType(),
         movement.getQuantity(),
         movement.getComment(),
-        movement.getCreatedAt()
+        movement.getCreatedAt(),
+        movement.getProduct().getConsumptionUnit() == null
+            ? "UNIDAD"
+            : movement.getProduct().getConsumptionUnit().name(),
+        ConsumptionUnit.scaleOf(movement.getProduct().getConsumptionUnit())
     );
   }
 }

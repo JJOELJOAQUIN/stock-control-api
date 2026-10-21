@@ -1,6 +1,7 @@
 package com.jowi.stock.alert;
 
 import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ConsumptionUnit;
 import com.jowi.stock.stock.entities.StockEntity;
 import com.jowi.stock.stock.enums.StockContext;
 import com.jowi.stock.stock.repositories.JpaStockRepository;
@@ -130,7 +131,9 @@ public class AlertService {
         AlertType.LOW_STOCK,
         product.getId(),
         product.getName(),
-        "Stock por debajo del mínimo (" + stock.getCurrent() + "/" + product.getMinimumStock() + ")",
+        "Stock por debajo del mínimo ("
+            + ConsumptionUnit.format(stock.getCurrent(), product.getConsumptionUnit()) + " / "
+            + ConsumptionUnit.format(product.getMinimumStock(), product.getConsumptionUnit()) + ")",
         OffsetDateTime.now());
   }
 

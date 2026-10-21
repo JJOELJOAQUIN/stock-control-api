@@ -83,7 +83,8 @@ public class GlobalExceptionHandler {
                 ex.getAvailable(),
                 ex.getRequested(),
                 ex.getUnit(),
-                ex.getUnitsPerPackage()));
+                ex.getUnitsPerPackage(),
+                ex.getUnitScale()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
