@@ -38,7 +38,7 @@ public class InsufficientStockException extends IllegalStateException {
       int unitsPerPackage) {
     super("Stock insuficiente de " + productName + ": hay "
         + ConsumptionUnit.format(available, unit) + " y se necesitan "
-        + ConsumptionUnit.format(requested, unit) + ".");
+        + ConsumptionUnit.format(requested, unit));
     this.productId = productId;
     this.productName = productName;
     this.context = context;

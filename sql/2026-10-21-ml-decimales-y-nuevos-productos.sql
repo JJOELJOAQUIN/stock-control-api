@@ -68,10 +68,13 @@ VALUES
    'COLLAGENASA GH PB220 PBSERUM POLVO', 'CONSULTORIO', 0, 'ML', 15),
   (gen_random_uuid(), now(), now(), true, 'PBSERUM', 'MESOTERAPIA', 26666.67, true, 0,
    'HYALURONIDASA PB3000 DRAN PBSERUM POLVO', 'CONSULTORIO', 0, 'ML', 15),
-  (gen_random_uuid(), now(), now(), true, 'SUISSELLE', 'MESOTERAPIA', NULL, true, 0,
-   'CELLBOOSTER SHAPE AMPOLLA', 'CONSULTORIO', 0, 'AMPOLLA', NULL),
+  -- Cellbooster: caja de 6 viales de 3 ml; se usa 1 vial entero por sesión
+  -- -> se cuenta en viales. $85.000 el vial.
+  (gen_random_uuid(), now(), now(), true, 'SUISSELLE', 'MESOTERAPIA', 85000, true, 0,
+   'CELLBOOSTER SHAPE VIAL 3 ML', 'CONSULTORIO', 0, 'AMPOLLA', 6),
+  -- Profhilo: se usa la jeringa entera -> se cuenta en jeringas, no en ml.
   (gen_random_uuid(), now(), now(), true, 'NAHYCO', 'MESOTERAPIA', NULL, true, 0,
-   'PROFHILO', 'CONSULTORIO', 0, 'ML', 20);
+   'PROFHILO JERINGA', 'CONSULTORIO', 0, 'AMPOLLA', NULL);
 
 -- Stock inicial de los polvos que ya hay: 2 lipasas (3 ml), 1 colagenasa
 -- (1,5 ml), 1 hialuronidasa (1,5 ml). El resto arranca en 0.
@@ -84,7 +87,7 @@ SELECT gen_random_uuid(),
        0, p.id, 'CONSULTORIO'
   FROM products p
  WHERE p.name IN ('LIPASA PB500 SLIM PBSERUM POLVO', 'COLLAGENASA GH PB220 PBSERUM POLVO',
-                  'HYALURONIDASA PB3000 DRAN PBSERUM POLVO', 'CELLBOOSTER SHAPE AMPOLLA', 'PROFHILO');
+                  'HYALURONIDASA PB3000 DRAN PBSERUM POLVO', 'CELLBOOSTER SHAPE VIAL 3 ML', 'PROFHILO JERINGA');
 INSERT INTO stock_movements (id, created_at, updated_at, quantity, product_id, type, reason_type, comment, context)
 SELECT gen_random_uuid(), now(), now(), s.current_stock, s.product_id, 'IN', 'AJUSTE_ERROR',
        'Stock inicial (alta del producto)', 'CONSULTORIO'
@@ -94,9 +97,10 @@ SELECT gen_random_uuid(), now(), now(), s.current_stock, s.product_id, 'IN', 'AJ
 -- ---------------------------------------------------------------------
 -- 4) Tratamientos.
 -- ---------------------------------------------------------------------
--- Cicatrices con lipasa + colagenasa + hialuronidasa: $80.000, la hace la
--- médica. La receta (cuántos ml de cada polvo por sesión) se carga desde
--- Catálogo de tratamientos cuando esté confirmada.
+-- Cicatrices con lipasa + colagenasa + hialuronidasa: $80.000 base, la hace
+-- la médica. SIN receta a propósito: lo gastado depende del tamaño de la
+-- cicatriz, así que en Caja la médica carga los ml de cada polvo (y ajusta
+-- el precio) en cada sesión.
 INSERT INTO procedure_catalog (id, created_at, updated_at, active, amount, code, label, kind,
                                performed_by, cosmetologist_percent, doctor_percent, special_flow)
 VALUES (gen_random_uuid(), now(), now(), true, 80000, 'MESOTERAPIA_CICATRICES_ENZIMAS',
@@ -104,11 +108,18 @@ VALUES (gen_random_uuid(), now(), now(), true, 80000, 'MESOTERAPIA_CICATRICES_EN
        (gen_random_uuid(), now(), now(), true, NULL, 'SKINBOOSTER_PROFHILO',
         'SKINBOOSTER PROFHILO', 'MEDICA', 'MEDICA', 0, 1, 'NONE');
 
--- Cellbooster Shape = mesoterapia de adiposidades faciales; usa 1 ampolla.
-UPDATE procedure_catalog SET label = 'MESOTERAPIA ADIPOSIDADES FACIALES (CELLBOOSTER SHAPE)', updated_at = now()
+-- Cellbooster Shape = mesoterapia de adiposidades faciales: $185.000,
+-- usa 1 vial entero.
+UPDATE procedure_catalog
+   SET label = 'MESOTERAPIA ADIPOSIDADES FACIALES (CELLBOOSTER SHAPE)', amount = 185000, updated_at = now()
  WHERE code = 'CELLBOOSTER_SHAPE';
 INSERT INTO procedure_consumption (id, procedure_code, product_id, quantity, created_at, updated_at)
 SELECT gen_random_uuid(), 'CELLBOOSTER_SHAPE', id, 1, now(), now()
-  FROM products WHERE name = 'CELLBOOSTER SHAPE AMPOLLA';
+  FROM products WHERE name = 'CELLBOOSTER SHAPE VIAL 3 ML';
+
+-- Skinbooster Profhilo: 1 jeringa entera por sesión (precio a definir).
+INSERT INTO procedure_consumption (id, procedure_code, product_id, quantity, created_at, updated_at)
+SELECT gen_random_uuid(), 'SKINBOOSTER_PROFHILO', id, 1, now(), now()
+  FROM products WHERE name = 'PROFHILO JERINGA';
 
 COMMIT;
