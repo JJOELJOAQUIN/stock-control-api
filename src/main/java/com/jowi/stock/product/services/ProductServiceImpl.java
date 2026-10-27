@@ -63,7 +63,7 @@ public class ProductServiceImpl implements ProductService {
         request.expirable() != null ? request.expirable() : true);
 
     product.setScope(request.scope());
-    product.setBarcode(request.barcode());
+    product.setBarcode(normalizeBarcode(request.barcode()));
     product.setCostPrice(request.costPrice());
     product.setSalePrice(request.salePrice());
     product.setDefaultMarkupPercentage(request.defaultMarkupPercentage());
@@ -150,12 +150,20 @@ public class ProductServiceImpl implements ProductService {
     Product p = getById(id);
 
     p.setName(r.name());
-    p.setDescription(r.description());
+    // Descripción, expirable y estado solo se pisan si el cliente los envió:
+    // el formulario no los conocía y los reseteaba ("" / false) al guardar.
+    if (r.description() != null) {
+      p.setDescription(r.description());
+    }
     p.setMinimumStock(r.minimumStock());
     p.setCategory(r.category());
     p.setBrand(r.brand());
-    p.setExpirable(r.expirable());
-    p.setActive(r.active());
+    if (r.expirable() != null) {
+      p.setExpirable(r.expirable());
+    }
+    if (r.active() != null) {
+      p.setActive(r.active());
+    }
     p.setCostPrice(r.costPrice());
     p.setSalePrice(r.salePrice());
     p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
@@ -237,6 +245,17 @@ public class ProductServiceImpl implements ProductService {
         .orElseThrow(() -> new IllegalArgumentException("Product not found for barcode: " + barcode));
   }
 
+  /**
+   * El barcode es único: un "" guardado bloquea a cualquier otro producto
+   * sin código, así que vacío se guarda como null.
+   */
+  private static String normalizeBarcode(String barcode) {
+    if (barcode == null || barcode.isBlank()) {
+      return null;
+    }
+    return barcode.trim();
+  }
+
   private void validateProduct(Product product) {
     if (product == null) {
       throw new IllegalArgumentException("Product cannot be null");
@@ -275,7 +294,7 @@ public class ProductServiceImpl implements ProductService {
       product.setBrand(req.brand());
       product.setScope(req.scope());
       product.setExpirable(req.expirable() != null ? req.expirable() : true);
-      product.setBarcode(req.barcode());
+      product.setBarcode(normalizeBarcode(req.barcode()));
       product.setCostPrice(req.costPrice());
       product.setSalePrice(req.salePrice());
       product.setDefaultMarkupPercentage(req.defaultMarkupPercentage());
@@ -289,8 +308,9 @@ public class ProductServiceImpl implements ProductService {
 
   @Override
   @Transactional
-  public void assignBarcode(UUID productId, String barcode) {
-    if (barcode == null || barcode.isBlank()) {
+  public void assignBarcode(UUID productId, String rawBarcode) {
+    String barcode = normalizeBarcode(rawBarcode);
+    if (barcode == null) {
       throw new IllegalArgumentException("Barcode is required");
     }
 
@@ -355,7 +375,9 @@ public class ProductServiceImpl implements ProductService {
                   ? null
                   : product.getConsumptionUnit().name(),
               product.getUnitsPerPackage(),
-              ConsumptionUnit.scaleOf(product.getConsumptionUnit()));
+              ConsumptionUnit.scaleOf(product.getConsumptionUnit()),
+              product.getDescription(),
+              product.getExpirable());
         })
         .toList();
   }
