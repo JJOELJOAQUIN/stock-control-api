@@ -150,12 +150,20 @@ public class ProductServiceImpl implements ProductService {
     Product p = getById(id);
 
     p.setName(r.name());
-    p.setDescription(r.description());
+    // Descripción, expirable y estado solo se pisan si el cliente los envió:
+    // el formulario no los conocía y los reseteaba ("" / false) al guardar.
+    if (r.description() != null) {
+      p.setDescription(r.description());
+    }
     p.setMinimumStock(r.minimumStock());
     p.setCategory(r.category());
     p.setBrand(r.brand());
-    p.setExpirable(r.expirable());
-    p.setActive(r.active());
+    if (r.expirable() != null) {
+      p.setExpirable(r.expirable());
+    }
+    if (r.active() != null) {
+      p.setActive(r.active());
+    }
     p.setCostPrice(r.costPrice());
     p.setSalePrice(r.salePrice());
     p.setDefaultMarkupPercentage(r.defaultMarkupPercentage());
@@ -367,7 +375,9 @@ public class ProductServiceImpl implements ProductService {
                   ? null
                   : product.getConsumptionUnit().name(),
               product.getUnitsPerPackage(),
-              ConsumptionUnit.scaleOf(product.getConsumptionUnit()));
+              ConsumptionUnit.scaleOf(product.getConsumptionUnit()),
+              product.getDescription(),
+              product.getExpirable());
         })
         .toList();
   }

@@ -25,5 +25,8 @@ public record ProductWithStockResponse(
         Integer unitsPerPackage,
         // Cantidades (stock, mínimo, unitsPerPackage) van en unidades
         // guardadas: dividir por unitScale para mostrar (ML = 10, décimas).
-        Integer unitScale) {
+        Integer unitScale,
+        // El formulario de edición los necesita para no pisarlos al guardar.
+        String description,
+        Boolean expirable) {
 }
