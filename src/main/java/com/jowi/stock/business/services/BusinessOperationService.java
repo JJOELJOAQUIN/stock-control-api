@@ -37,6 +37,14 @@ import com.jowi.stock.business.dto.CombinedSaleRequest;
 import com.jowi.stock.cash.dto.CombinedItemLine;
 import com.jowi.stock.cash.enums.CashMovementItemKind;
 import com.jowi.stock.purchase.entities.PurchaseItem;
+import com.jowi.stock.product.enums.ProductCategory;
+import com.jowi.stock.purchase.exceptions.DuplicatePurchaseException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import com.jowi.stock.purchase.repositories.PurchaseItemRepository;
 import com.jowi.stock.procedure.services.ProcedureConsumptionService;
 import com.jowi.stock.procedure.entities.ProcedureCatalog;
@@ -333,9 +341,27 @@ public class BusinessOperationService {
       PaymentMethod paymentMethod,
       BigDecimal expectedTotal,
       List<PurchaseItemRequest> items) {
+    purchaseOrder(context, comment, paymentMethod, expectedTotal, items, false);
+  }
+
+  /**
+   * @param confirmDuplicate true cuando el usuario ya confirmó que la orden
+   *                         no es una repetida (ver {@link #rejectDuplicatePurchase}).
+   */
+  public void purchaseOrder(
+      CashContext context,
+      String comment,
+      PaymentMethod paymentMethod,
+      BigDecimal expectedTotal,
+      List<PurchaseItemRequest> items,
+      boolean confirmDuplicate) {
 
     if (items == null || items.isEmpty()) {
       throw new IllegalArgumentException("La compra debe tener al menos un ítem");
+    }
+
+    if (!confirmDuplicate) {
+      rejectDuplicatePurchase(context, comment, items);
     }
 
     StockContext stockContext = context.toStockContext();
@@ -394,6 +420,63 @@ public class BusinessOperationService {
     purchaseItemRepository.saveAll(purchaseItems);
   }
 
+  /** Ventana para considerar repetida una orden con mismos productos y total. */
+  private static final Duration DUPLICATE_PURCHASE_WINDOW = Duration.ofHours(48);
+
+  private static final DateTimeFormatter DUPLICATE_DATE_FORMAT =
+      DateTimeFormatter.ofPattern("dd/MM 'a las' HH:mm")
+          .withZone(ZoneId.of("America/Argentina/Buenos_Aires"));
+
+  /**
+   * Frena una orden de compra que ya está cargada. Pasó con el pedido
+   * LACROZE 22706: se cargó 4 veces en 12 minutos porque el stock se veía
+   * mal, y cada carga sumó stock y un egreso de caja.
+   *
+   * Es repetida si (a) hay otra orden no anulada con el mismo comentario
+   * (número de pedido), o (b) hay otra de las últimas 48 h con exactamente
+   * los mismos productos y cantidades. No bloquea para siempre: tira
+   * DuplicatePurchaseException y el front pregunta antes de reenviar con
+   * confirmDuplicate = true.
+   */
+  private void rejectDuplicatePurchase(
+      CashContext context, String comment, List<PurchaseItemRequest> items) {
+
+    if (comment != null && !comment.isBlank()) {
+      Instant last = purchaseItemRepository.findLastOrderWithComment(
+          context, comment.trim().toLowerCase());
+      if (last != null) {
+        throw new DuplicatePurchaseException(
+            "Ya hay una compra cargada con el comentario \"" + comment.trim()
+                + "\" (" + DUPLICATE_DATE_FORMAT.format(last) + ").");
+      }
+    }
+
+    Map<UUID, Integer> requested = new HashMap<>();
+    for (PurchaseItemRequest item : items) {
+      requested.merge(item.productId(), item.quantity(), Integer::sum);
+    }
+
+    Map<UUID, Map<UUID, Integer>> linesByOrder = new HashMap<>();
+    Map<UUID, Instant> dateByOrder = new HashMap<>();
+    for (Object[] row : purchaseItemRepository.findOrderLinesSince(
+        context, Instant.now().minus(DUPLICATE_PURCHASE_WINDOW))) {
+      UUID orderId = (UUID) row[0];
+      dateByOrder.put(orderId, (Instant) row[1]);
+      linesByOrder.computeIfAbsent(orderId, k -> new HashMap<>())
+          .merge((UUID) row[3], (Integer) row[4], Integer::sum);
+    }
+
+    linesByOrder.entrySet().stream()
+        .filter(e -> e.getValue().equals(requested))
+        .map(e -> dateByOrder.get(e.getKey()))
+        .max(Instant::compareTo)
+        .ifPresent(last -> {
+          throw new DuplicatePurchaseException(
+              "Ya hay una compra con los mismos productos y cantidades cargada el "
+                  + DUPLICATE_DATE_FORMAT.format(last) + ".");
+        });
+  }
+
   /**
    * Procesa un único ítem de la compra (stock + lote + precios) y devuelve su
    * subtotal. No crea movimiento de caja: ese se hace una sola vez por la
@@ -443,6 +526,25 @@ public class BusinessOperationService {
     int packages = item.quantity();
 
     var product = productService.getById(productId);
+
+    // Producto mal configurado = stock mal cargado: un cosmético de venta en
+    // ml, o un insumo en ml sin contenido de envase, suman décimas de ml por
+    // envase. Se frena acá para que se corrija la ficha antes de comprar.
+    ConsumptionUnit unit = product.getConsumptionUnit() == null
+        ? ConsumptionUnit.UNIDAD
+        : product.getConsumptionUnit();
+    if (product.getCategory() == ProductCategory.COSMETICO_VENTA
+        && unit != ConsumptionUnit.UNIDAD) {
+      throw new IllegalArgumentException(product.getName()
+          + " es un cosmético de venta y está en " + unit.label()
+          + ": editá el producto y pasalo a Unidad antes de cargar la compra");
+    }
+    if (unit == ConsumptionUnit.ML
+        && (product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1)) {
+      throw new IllegalArgumentException(product.getName()
+          + " está en ml pero no tiene el contenido del envase: completalo en el producto"
+          + " antes de cargar la compra");
+    }
 
     // La compra se carga en ENVASES; el stock y el lote entran en la unidad
     // consumible del producto, ya escalada (ver ConsumptionUnit). Caja de

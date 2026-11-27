@@ -42,7 +42,8 @@ public class BusinessOperationController {
         req.comment(),
         req.paymentMethod(),
         req.expectedTotal(),
-        req.items());
+        req.items(),
+        Boolean.TRUE.equals(req.confirmDuplicate()));
 
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }

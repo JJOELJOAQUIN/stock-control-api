@@ -17,6 +17,7 @@ import com.jowi.stock.procedure.repositories.ProcedureCatalogRepository;
 import com.jowi.stock.procedure.repositories.ProcedureConsumptionRepository;
 import com.jowi.stock.product.dto.CreateProductRequest.ProductRecipeLineRequest;
 import com.jowi.stock.product.entities.Product;
+import com.jowi.stock.product.enums.ProductCategory;
 import com.jowi.stock.product.enums.ProductScope;
 import com.jowi.stock.product.repositories.ProductRepository;
 import com.jowi.stock.product.services.interfaces.ProductService;
@@ -275,6 +276,37 @@ public class ProductServiceImpl implements ProductService {
 
     if (product.getShelfLifeMonths() != null && product.getShelfLifeMonths() <= 0) {
       throw new IllegalArgumentException("Shelf life months must be greater than zero");
+    }
+
+    validateConsumptionUnit(product);
+  }
+
+  /**
+   * La unidad de consumo (ml, ampolla, disparo) es para los INSUMOS que se
+   * fraccionan en procedimientos. Un producto de venta se vende y se compra
+   * por unidad: si se lo cuenta en ml, cada envase comprado entra como 0,1 ml
+   * y el stock deja de tener sentido (pasó con la Pantalla Solar Gel x50grs:
+   * 10 envases quedaron como "1 ml").
+   *
+   * Y un insumo en ml necesita el contenido del envase: sin él, cada envase
+   * comprado suma una décima de ml.
+   */
+  private static void validateConsumptionUnit(Product product) {
+    ConsumptionUnit unit = product.getConsumptionUnit() == null
+        ? ConsumptionUnit.UNIDAD
+        : product.getConsumptionUnit();
+
+    if (product.getCategory() == ProductCategory.COSMETICO_VENTA
+        && unit != ConsumptionUnit.UNIDAD) {
+      throw new IllegalArgumentException(
+          "Un cosmético de venta se cuenta por unidad: la unidad "
+              + unit.label() + " es solo para insumos de procedimientos");
+    }
+
+    if (unit == ConsumptionUnit.ML
+        && (product.getUnitsPerPackage() == null || product.getUnitsPerPackage() < 1)) {
+      throw new IllegalArgumentException(
+          "Un insumo en ml necesita el contenido de un envase (por ejemplo, 15 ml)");
     }
   }
 
