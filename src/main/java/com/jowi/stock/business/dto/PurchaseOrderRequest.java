@@ -32,5 +32,11 @@ public record PurchaseOrderRequest(
 
     @NotNull @PositiveOrZero BigDecimal expectedTotal,
 
-    @NotEmpty @Valid List<PurchaseItemRequest> items) {
+    @NotEmpty @Valid List<PurchaseItemRequest> items,
+
+    /**
+     * true cuando el usuario confirmó que no es una compra repetida (el
+     * backend la había frenado con DUPLICATE_PURCHASE). null = false.
+     */
+    Boolean confirmDuplicate) {
 }

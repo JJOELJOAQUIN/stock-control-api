@@ -37,4 +37,37 @@ public interface PurchaseItemRepository extends JpaRepository<PurchaseItem, UUID
       @Param("context") CashContext context,
       @Param("from") Instant from,
       @Param("to") Instant to);
+
+  /**
+   * Renglones de las órdenes de compra no anuladas de un contexto desde una
+   * fecha, para detectar una orden cargada dos veces. Por fila:
+   *   [0] cashMovementId  [1] createdAt  [2] amount  [3] productId  [4] quantity
+   */
+  @Query("""
+        SELECT c.id, c.createdAt, c.amount, pi.productId, pi.quantity
+        FROM PurchaseItem pi
+        JOIN pi.cashMovement c
+        WHERE c.voided = false
+          AND c.context = :context
+          AND c.createdAt >= :since
+        """)
+  List<Object[]> findOrderLinesSince(
+      @Param("context") CashContext context,
+      @Param("since") Instant since);
+
+  /**
+   * Fecha de la última orden no anulada con ese comentario (número de
+   * pedido / proveedor), comparando sin mayúsculas ni espacios de borde.
+   */
+  @Query("""
+        SELECT MAX(c.createdAt)
+        FROM PurchaseItem pi
+        JOIN pi.cashMovement c
+        WHERE c.voided = false
+          AND c.context = :context
+          AND LOWER(TRIM(c.comment)) = :comment
+        """)
+  Instant findLastOrderWithComment(
+      @Param("context") CashContext context,
+      @Param("comment") String comment);
 }

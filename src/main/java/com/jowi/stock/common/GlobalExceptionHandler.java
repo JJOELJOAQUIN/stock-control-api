@@ -1,5 +1,7 @@
 package com.jowi.stock.common;
 
+import com.jowi.stock.purchase.exceptions.DuplicatePurchaseException;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -85,6 +87,22 @@ public class GlobalExceptionHandler {
                 ex.getUnit(),
                 ex.getUnitsPerPackage(),
                 ex.getUnitScale()));
+    }
+
+    /**
+     * Compra que parece repetida: 409 con error = DUPLICATE_PURCHASE para que
+     * el front pueda preguntar y reenviar con confirmDuplicate = true.
+     */
+    @ExceptionHandler(DuplicatePurchaseException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicatePurchase(
+            DuplicatePurchaseException ex,
+            HttpServletRequest request) {
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                DuplicatePurchaseException.CODE,
+                ex.getMessage(),
+                request.getRequestURI()));
     }
 
     @ExceptionHandler(IllegalStateException.class)
