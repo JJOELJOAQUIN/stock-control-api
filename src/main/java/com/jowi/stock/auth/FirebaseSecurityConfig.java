@@ -128,6 +128,11 @@ public class FirebaseSecurityConfig {
                     // Tratamientos / pacientes / pagos (peeling y futuros protocolos).
                     auth.requestMatchers("/api/treatments/**").hasAnyRole("ADMIN", "COSMETOLOGA");
 
+                    // Efectivo que la cosmetóloga le deja a la médica: lo ven y lo
+                    // cargan las dos.
+                    auth.requestMatchers("/api/metrics/cosmetologist-cash/**", "/api/metrics/cosmetologist-cash")
+                            .hasAnyRole("ADMIN", "COSMETOLOGA");
+
                     // Cierre por defecto: todo lo no matcheado exige autenticación.
                     auth.anyRequest().authenticated();
                 })
